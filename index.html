@@ -1,0 +1,2662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1E7145">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SALUTE">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./icon-192.png">
+<title>SALUTE 9999</title>
+<style>
+  :root{
+    --ink:#22201D; --ink-2:#6B655C; --ink-3:#9A938A;
+    --paper:#FFFFFF; --surface:#F6F5F2; --rule:#E3E0DA;
+    --green:#1E7145; --green-soft:#E6F0E8; --green-dk:#175836;
+    --red:#C8102E; --red-soft:#FDF2F4;
+    --amber:#B9762A; --amber-soft:#FBF0E2;
+    --blue:#2C5F8A; --blue-soft:#E7EFF6;
+    --tap:44px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--paper); color:var(--ink);
+    /* 端末標準の和文フォント。オフライン起動を優先し、Webフォントは読み込まない */
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",
+                system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:15px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+  [hidden]{display:none !important}
+
+  /* ---- 画面構成: 固定ヘッダー + スクロール本文 ---- */
+  #app{display:flex;flex-direction:column;height:100dvh}
+  header{
+    flex:0 0 auto; background:var(--green); color:#fff;
+    padding:max(env(safe-area-inset-top),10px) 16px 11px;
+  }
+  .bar{display:flex;align-items:center;gap:12px;min-height:var(--tap)}
+  .back{
+    flex:0 0 auto;width:34px;height:34px;margin-left:-6px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:8px;color:#fff;
+  }
+  .back:active{background:rgba(255,255,255,.18)}
+  .titles{flex:1 1 auto;min-width:0}
+  .eyebrow{font-size:12px;color:rgba(255,255,255,.72);letter-spacing:.02em}
+  h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.01em;
+     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .count{flex:0 0 auto;font-size:13px;color:rgba(255,255,255,.86);font-variant-numeric:tabular-nums}
+  /* 画面の下にボタンを並べると選ぶものが増えて迷うので、
+     いつでも使うもの(書き出し・決め方)は見出しの右に小さく置く。 */
+  .acts{flex:0 0 auto;display:flex;align-items:center;margin-left:4px;margin-right:-7px}
+  .acts button{
+    width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    border-radius:9px;color:#fff;
+  }
+  .acts button:active{background:rgba(255,255,255,.18)}
+
+  main{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;
+       padding-bottom:max(env(safe-area-inset-bottom),20px)}
+
+  /* ---- 行 ---- */
+  .row{
+    display:flex;align-items:center;gap:12px;width:100%;
+    padding:13px 16px;min-height:var(--tap);text-align:left;
+    border-bottom:1px solid var(--rule);
+  }
+  .row:active{background:var(--surface)}
+  .row .body{flex:1 1 auto;min-width:0}
+  .row .name{font-weight:600;letter-spacing:.01em}
+  .row .sub{font-size:12.5px;color:var(--ink-2);margin-top:1px}
+  /* 最終トレーニング日。しばらく動いていない人に気づけるようにする */
+  .row .sub .recent{color:var(--green);font-weight:600}
+  .row .sub .stale{color:var(--red);font-weight:600}
+  .chev{flex:0 0 auto;color:var(--ink-3)}
+
+  /* 部・章の見出し行 */
+  .sec{padding:16px 16px 7px;font-size:12px;color:var(--ink-2);font-weight:600;
+       background:var(--surface);border-bottom:1px solid var(--rule);
+       box-shadow:inset 3px 0 0 var(--green)}
+
+  /* ---- 進捗: 細いバー + 分数 ---- */
+  .meter{display:flex;align-items:center;gap:10px;margin-top:7px}
+  .track{flex:1 1 auto;height:3px;background:var(--rule);border-radius:2px;overflow:hidden}
+  .fill{height:100%;background:var(--green);border-radius:2px}
+  /* 分数は項目数。主役ではないので控えめに戻す */
+  .frac{flex:0 0 auto;font-size:12px;color:var(--ink-2);
+        font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* ポイントが主役。章を全部確定させると入る点数を大きく見せる */
+  .pts{flex:0 0 auto;display:flex;align-items:baseline;gap:2px;
+       white-space:nowrap;font-variant-numeric:tabular-nums}
+  .pts em{font-style:normal;font-size:28px;font-weight:700;line-height:1;
+          letter-spacing:-.02em;color:var(--ink-3)}
+  .pts em.on{color:var(--green)}
+  /* 分母(満点)は文脈。分子より小さく、控えめに */
+  .pts s{text-decoration:none;font-size:13px;font-weight:700;color:var(--ink-3);
+         letter-spacing:-.01em}
+  .pts i{font-style:normal;font-size:11px;font-weight:700;color:var(--ink-3);
+         letter-spacing:.02em}
+  .pts i.on{color:var(--green)}
+
+  /* ---- クルー行の10本バー(部ごとの到達度) ---- */
+  /* 部が10あるという事実そのものを形にした一覧表示。
+     縦棒の高さで「どの領域が育っていて、どこが空いているか」を一目で見せる。 */
+  .gauge{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .gauge .frac{font-size:12px;line-height:1.1;color:var(--ink-3)}
+  .gauge .frac b{font-size:22px;font-weight:700;color:var(--ink-3);letter-spacing:-.015em}
+  .gauge .frac b.on{color:var(--green)}
+  .profile{display:flex;align-items:flex-end;gap:2px;height:20px;flex:0 0 auto}
+  .profile i{width:4px;background:var(--rule);border-radius:1px;display:block}
+  .profile i.on{background:var(--green)}
+
+  /* ---- 状態チップ ---- */
+  .chips{flex:0 0 auto;display:flex;gap:6px;align-items:center}
+  .chip{
+    min-width:40px;height:30px;padding:0 9px;border-radius:15px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:600;letter-spacing:.02em;
+    border:1px solid var(--rule);color:var(--ink-3);background:var(--paper);
+  }
+  .chip.s1{border-color:#E4C69B;background:var(--amber-soft);color:var(--amber)}
+  .chip.s2{border-color:#B9CEE1;background:var(--blue-soft);color:var(--blue)}
+  .chip.s3{border-color:transparent;background:var(--green);color:#fff}
+  .chip.lv{min-width:26px;padding:0 6px;font-size:11px}
+  .chip[disabled]{opacity:.35}
+  .undo{
+    flex:0 0 auto;width:32px;height:32px;border-radius:16px;
+    display:flex;align-items:center;justify-content:center;color:var(--ink-3);
+  }
+  .undo:active{background:var(--surface)}
+
+  .vp{display:block;padding:13px 16px;border-bottom:1px solid var(--rule)}
+  /* 差し戻された観点。赤は店のブランド色でもあるので、ここだけに使う */
+  .vp.sent{background:var(--red-soft);box-shadow:inset 3px 0 0 var(--red)}
+  .vp .backnote{
+    margin-top:8px;padding:8px 10px;border-radius:8px;background:#fff;
+    border:1px solid #F0D3D8;font-size:12.5px;color:var(--ink-2);
+  }
+  .vp .backnote b{color:var(--red);font-weight:700}
+  .sendback{
+    flex:0 0 auto;height:32px;padding:0 12px;border-radius:16px;
+    display:flex;align-items:center;font-size:12.5px;font-weight:600;
+    color:var(--red);border:1px solid #EFC9CF;background:#fff;
+  }
+  .sendback:active{background:var(--red-soft)}
+  .vp .text{font-size:14.5px;line-height:1.5}
+  .vp .foot{display:flex;align-items:center;gap:10px;margin-top:9px}
+  .vp .done{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .vp.is-done .text{color:var(--ink-2)}
+
+  .empty{padding:56px 24px;text-align:center;color:var(--ink-2)}
+  .empty b{display:block;font-size:16px;color:var(--ink);margin-bottom:6px}
+
+  .mark{
+    width:26px;height:26px;border-radius:8px;background:var(--red);
+    box-shadow:0 0 0 2px rgba(255,255,255,.9);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .mark svg{display:block}
+
+  /* ---- クルーのホーム: 点数と次の格付までの距離を主役にする ---- */
+  .hero{padding:26px 20px 22px;border-bottom:1px solid var(--rule)}
+  .hero .who{display:flex;align-items:baseline;gap:10px}
+  .hero .who b{font-size:21px;font-weight:700;letter-spacing:.01em}
+  .hero .who .retired{background:var(--red)}
+  .hero .who span{
+    font-size:12px;font-weight:700;letter-spacing:.03em;
+    color:#fff;background:var(--green);padding:3px 9px;border-radius:10px;
+  }
+  .pt{display:flex;align-items:baseline;gap:8px;margin-top:14px}
+  .pt em{font-style:normal;font-size:54px;font-weight:700;line-height:1;
+         letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--green-dk)}
+  .pt i{font-style:normal;font-size:15px;color:var(--ink-2)}
+  .toNext{margin-top:12px;font-size:13.5px;color:var(--ink-2)}
+  .toNext b{color:var(--green);font-weight:700;font-variant-numeric:tabular-nums}
+  /* 格付の道のり。現在地と次の到達点を1本の線で示す */
+  .road{margin-top:10px;height:6px;border-radius:3px;background:var(--rule);overflow:hidden}
+  .road div{height:100%;background:var(--green);border-radius:3px}
+  .roadEnds{display:flex;justify-content:space-between;margin-top:5px;
+            font-size:11.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+  /* 章に「あと◯項目で+◯点」を出す */
+  .soon{font-size:12px;color:var(--green);font-weight:600;margin-top:3px}
+  .earned{font-size:12px;color:var(--ink-3);margin-top:3px}
+
+  .switch{
+    display:block;width:100%;text-align:center;padding:16px;
+    color:var(--ink-2);font-size:13.5px;border-top:1px solid var(--rule);
+  }
+  .switch:active{background:var(--surface)}
+  .switch.danger{color:var(--red)}
+
+  /* ---- 承認待ちのバッジ(クルー一覧) ---- */
+  .badges{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+  .badge{
+    display:inline-flex;align-items:center;gap:4px;height:21px;padding:0 8px;
+    border-radius:11px;font-size:11.5px;font-weight:700;letter-spacing:.01em;
+  }
+  /* マネージャー承認待ちは「あと1タップで点が入る」ので緑で目立たせる */
+  .badge.m{background:var(--green);color:#fff}
+  /* トレーナー確認待ちは控えめに */
+  .badge.t{background:var(--amber-soft);color:var(--amber);border:1px solid #E4C69B}
+
+  /* ---- ホームの承認待ち(件数だけ) ---- */
+  .todobar{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    padding:14px 16px;border-bottom:1px solid var(--rule);background:var(--surface);
+  }
+  .todobar:active{filter:brightness(.97)}
+  .todobar .txt{flex:1 1 auto;min-width:0}
+  .todobar .t1{font-size:14px;font-weight:700}
+  .todobar .t2{font-size:12.5px;color:var(--ink-2);margin-top:1px}
+
+  /* ---- 承認待ちの一覧(クルーの画面) ---- */
+  .todo{border-bottom:1px solid var(--rule)}
+  .todo .head{
+    display:flex;align-items:center;gap:8px;padding:14px 16px 8px;
+    font-size:12.5px;color:var(--ink-2);
+  }
+  .todo .head b{font-size:13px;color:var(--ink)}
+  .todo .item{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    padding:11px 16px;border-top:1px solid var(--rule);
+  }
+  .todo .item:active{background:var(--surface)}
+  .todo .item .t1{flex:1 1 auto;min-width:0;font-size:14px;font-weight:600}
+  .todo .item .t2{font-size:12px;color:var(--ink-2);font-weight:400;margin-top:1px}
+  .todo .item .pt2{
+    flex:0 0 auto;font-size:13px;font-weight:700;color:var(--green);
+    font-variant-numeric:tabular-nums;
+  }
+  .todo .item .left{
+    flex:0 0 auto;font-size:12.5px;font-weight:700;color:var(--amber);
+    font-variant-numeric:tabular-nums;
+  }
+  .todo .more{padding:10px 16px;font-size:12.5px;color:var(--ink-2);text-align:center}
+
+  /* ---- 章のマネージャー承認 ---- */
+  .mgr{padding:14px 16px;border-bottom:1px solid var(--rule);background:var(--surface)}
+  .mgr .lv{display:flex;align-items:center;gap:10px;padding:7px 0}
+  .mgr .lvname{font-size:13px;font-weight:700;flex:0 0 74px}
+  .mgr .state{flex:1 1 auto;font-size:12.5px;color:var(--ink-2)}
+  .mgr .state b{color:var(--green)}
+  .mgr button{
+    flex:0 0 auto;height:36px;padding:0 16px;border-radius:18px;
+    background:var(--green);color:#fff;font-size:13px;font-weight:700;
+  }
+  .mgr button[disabled]{background:var(--rule);color:var(--ink-3)}
+  /* 取り消しは矢印だけ。承認ボタンの緑を引き継がないよう打ち消す */
+  .mgr .undo{width:32px;height:32px;padding:0;border-radius:16px;
+             background:none;color:var(--ink-3)}
+  .mgr .undo:active{background:var(--rule)}
+  .mgr .done{
+    flex:0 0 auto;font-size:12.5px;font-weight:700;color:var(--green);
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* ---- 一括入力モードの帯 ---- */
+  .bulkbar{
+    position:sticky;top:0;z-index:6;
+    display:flex;align-items:center;gap:10px;padding:10px 16px;
+    background:var(--amber-soft);border-bottom:1px solid #E4C69B;
+    font-size:12.5px;color:#7A4E14;
+  }
+  .bulkbar b{color:var(--amber)}
+  .bulkbar button{
+    margin-left:auto;flex:0 0 auto;height:30px;padding:0 12px;border-radius:15px;
+    background:#fff;border:1px solid #E4C69B;color:var(--amber);
+    font-size:12.5px;font-weight:700;
+  }
+  .vp .bulk{
+    flex:0 0 auto;height:32px;padding:0 14px;border-radius:16px;
+    background:var(--green);color:#fff;font-size:12.5px;font-weight:700;
+  }
+
+  /* ---- クルーの検索 ---- */
+  .search{padding:12px 16px;border-bottom:1px solid var(--rule);background:var(--paper);
+          position:sticky;top:0;z-index:5}
+  .search .box{position:relative;display:flex;align-items:center}
+  .search svg{position:absolute;left:12px;color:var(--ink-3);pointer-events:none}
+  .search input{
+    width:100%;height:42px;padding:0 40px 0 38px;font:inherit;font-size:16px;
+    border:1px solid var(--rule);border-radius:21px;background:var(--surface);
+    color:var(--ink);
+  }
+  .search input:focus{outline:2px solid var(--green);outline-offset:-1px;
+                      border-color:transparent;background:#fff}
+  .search input::placeholder{color:var(--ink-3)}
+  /* ブラウザが自前で付けるクリア・検索ボタンを消す。自前の✕と二重になるため */
+  .search input::-webkit-search-cancel-button,
+  .search input::-webkit-search-decoration,
+  .search input::-webkit-search-results-button,
+  .search input::-webkit-clear-button,
+  .search input::-ms-clear,
+  .search input::-ms-reveal{display:none !important;appearance:none;width:0;height:0}
+  .search .clear{
+    position:absolute;right:6px;width:32px;height:32px;border-radius:16px;
+    display:flex;align-items:center;justify-content:center;color:var(--ink-3);
+  }
+  .search .clear:active{background:var(--rule)}
+
+  /* ---- 入力シート(差し戻しの理由) ---- */
+  /* window.prompt は環境によってブロックされるため、画面内で完結させる */
+  #sheetbg{
+    position:fixed;inset:0;background:rgba(34,32,29,.38);
+    opacity:0;pointer-events:none;z-index:40;
+  }
+  #sheetbg.show{opacity:1;pointer-events:auto}
+  #sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:41;
+    background:var(--paper);border-radius:18px 18px 0 0;
+    padding:20px 18px calc(env(safe-area-inset-bottom) + 18px);
+    transform:translateY(102%);box-shadow:0 -10px 34px rgba(34,32,29,.18);
+  }
+  #sheet.show{transform:translateY(0)}
+  #sheet h2{margin:0 0 4px;font-size:17px;font-weight:700}
+  #sheet .target{
+    font-size:13.5px;color:var(--ink-2);line-height:1.5;
+    padding:10px 12px;background:var(--surface);border-radius:10px;margin:10px 0 14px;
+  }
+  #sheet label{display:block;font-size:12.5px;color:var(--ink-2);margin-bottom:6px}
+  #sheet input[type=text], #sheet select{
+    width:100%;height:46px;padding:0 12px;font:inherit;font-size:16px;
+    border:1px solid var(--rule);border-radius:10px;background:#fff;color:var(--ink);
+  }
+  #sheet input:focus, #sheet select:focus{
+    outline:2px solid var(--green);outline-offset:-1px;border-color:transparent}
+  #sheet .field{margin-bottom:12px}
+  #sheet .note{font-size:12.5px;color:var(--ink-2);line-height:1.55;margin-top:2px}
+  #sheet .confirm.danger{background:var(--red)}
+  #sheet .confirm.go{background:var(--green)}
+  #sheet textarea{
+    width:100%;min-height:84px;padding:11px 12px;font:inherit;font-size:15px;
+    border:1px solid var(--rule);border-radius:10px;resize:none;background:#fff;
+    color:var(--ink);
+  }
+  #sheet textarea:focus{outline:2px solid var(--green);outline-offset:-1px;border-color:transparent}
+  #sheet .acts{display:flex;gap:10px;margin-top:16px}
+  #sheet .acts button{
+    flex:1 1 0;height:48px;border-radius:12px;font-size:15px;font-weight:700;
+  }
+  #sheet .cancel{border:1px solid var(--rule);color:var(--ink-2);background:#fff}
+  #sheet .confirm{background:var(--red);color:#fff}
+  @media (prefers-reduced-motion:no-preference){
+    #sheetbg{transition:opacity .18s ease-out}
+    #sheet{transition:transform .26s cubic-bezier(.16,1,.3,1)}
+  }
+
+  /* ---- 加点の瞬間 ---- */
+  /* 章単位加算なので、点が動くのは「章の最後の1項目を確定した瞬間」だけ。
+     その一瞬にだけ動きを使う。他の場面では一切アニメーションさせない。 */
+  #toast{
+    position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 28px);
+    transform:translate(-50%,16px);opacity:0;pointer-events:none;
+    background:var(--green);color:#fff;border-radius:18px;
+    padding:14px 22px;text-align:center;
+    box-shadow:0 8px 28px rgba(30,113,69,.32);
+    max-width:min(86vw,340px);
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #toast .big{font-size:27px;font-weight:700;line-height:1.15;
+              letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  #toast .sub{font-size:13px;opacity:.92;margin-top:3px}
+  #toast .rank{
+    margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.3);
+    font-size:14px;font-weight:700;letter-spacing:.02em;
+  }
+  @media (prefers-reduced-motion:no-preference){
+    #toast{transition:opacity .2s ease-out,transform .24s cubic-bezier(.16,1,.3,1)}
+  }
+
+  @media (prefers-reduced-motion:no-preference){
+    .fill,.road div{transition:width .22s ease-out}
+  }
+
+  /* ---- 転記用の紙面 ---- */
+  /* 店舗の端末から印刷して、紙を見ながら本に書き写すためのもの。
+     画面の緑は使わない(インクを食うだけで、紙の上では意味を持たない)。 */
+  #printout{display:none}
+  body.preview #app{display:none}
+  body.preview #printout{
+    display:block;position:fixed;inset:0;overflow-y:auto;background:#fff;
+    -webkit-overflow-scrolling:touch;
+  }
+  .pbar{
+    position:sticky;top:0;z-index:2;display:flex;gap:10px;column-gap:10px;
+    padding:max(env(safe-area-inset-top),10px) 14px 10px;
+    background:var(--green);
+  }
+  .pbar button{
+    flex:1 1 0;height:44px;border-radius:11px;font-size:15px;font-weight:700;
+    background:#fff;color:var(--green-dk);
+  }
+  .pbar button.ghost{background:rgba(255,255,255,.16);color:#fff}
+  .pnote{position:sticky;top:64px;z-index:2;background:var(--green);
+         color:rgba(255,255,255,.9);font-size:12px;padding:0 14px 10px;line-height:1.45}
+  .paper{padding:18px 16px 60px;color:#000;max-width:760px;margin:0 auto}
+  .paper h2{margin:0;font-size:17px;font-weight:700;letter-spacing:.01em}
+  .paper .meta{font-size:12.5px;color:#444;margin-top:3px}
+  .paper .hint{font-size:12px;color:#666;margin-top:10px}
+  .person{margin-top:22px;border-top:2px solid #000;padding-top:9px}
+  /* 印刷経路によっては gap が効かないため、間隔は margin で作る */
+  .person .who{display:flex;align-items:baseline;flex-wrap:wrap}
+  .person .who > * + *{margin-left:8px}
+  .person .who b{font-size:16px}
+  .person .who span{font-size:12.5px;color:#444}
+  .person .who .gain{margin-left:auto;font-size:13px;font-weight:700;
+                     font-variant-numeric:tabular-nums}
+  .paper table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12.5px}
+  .paper th,.paper td{border:1px solid #999;padding:4px 6px;text-align:left;
+                      vertical-align:top}
+  .paper th{background:#EEE;font-weight:600;font-size:11.5px}
+  .paper td.num,.paper th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .paper td.date{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+  .paper .pr td,.paper .pr th{text-align:center;padding:3px 2px;font-size:11.5px}
+  .paper .pr .tot{font-weight:700;background:#F3F3F3}
+  /* SALSAからの判定材料。承認そのものではないので、緑にはしない。 */
+  .row .body .busy{margin-top:3px;font-size:12px;color:#8A6D00;font-weight:600}
+  .paper .quiet{font-size:12.5px;color:#444;margin-top:6px}
+  .paper .grp{margin-top:26px;padding-bottom:4px;border-bottom:1px solid #000;
+              font-size:13.5px;font-weight:700;display:flex;align-items:baseline}
+  .paper .grp span{margin-left:10px}
+  .paper .grp span{font-weight:400;font-size:12px;color:#444}
+  .person .who .tag{border:1px solid #000;border-radius:3px;padding:0 5px;
+                    font-size:11.5px;font-weight:700;color:#000}
+
+  @media print{
+    body.preview #printout{position:static;overflow:visible}
+    .pbar,.pnote{display:none}
+    .paper{padding:0;max-width:none}
+    .person{break-inside:avoid;page-break-inside:avoid}
+    @page{size:A4;margin:12mm}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="bar">
+      <button class="back" id="back" hidden aria-label="戻る">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="mark" id="mark">
+        <svg width="26" height="26" viewBox="0 0 200 200" aria-hidden="true">
+          <path d="M55 106 L88 139 L148 70" fill="none" stroke="#FFFFFF"
+                stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="152" cy="152" r="16" fill="#1E7145"/>
+        </svg>
+      </div>
+      <div class="titles">
+        <div class="eyebrow" id="eyebrow"></div>
+        <h1 id="title"></h1>
+      </div>
+      <div class="count" id="count"></div>
+      <div class="acts" id="acts"></div>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+<div id="printout" aria-hidden="true"></div>
+
+<script>
+"use strict";
+
+const MASTER = {"bu": [{"code": "01", "name": "コモンルール", "chapters": [{"code": "01-01", "name": "1 イントロダクション", "basicMaxPt": 10, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 サイゼリヤとは", "viewpoints": [{"code": "01-01-01-1", "text": "サイゼリヤの基本理念を言える"}]}, {"name": "２ 仕事の基本", "viewpoints": [{"code": "01-01-02-1", "text": "勤務のルールを理解できる　※OKサインが必ず記入できている"}]}, {"name": "3 Quality Service Cleanliness", "viewpoints": [{"code": "01-01-03-1", "text": "QSCの言葉の意味が分かる"}]}, {"name": "４ マニュアル", "viewpoints": [{"code": "01-01-04-1", "text": "マニュアルを守ると約束できる"}]}, {"name": "５ トレーニングと能力評価", "viewpoints": [{"code": "01-01-05-1", "text": "トレーニングの進め方が理解できる"}]}]}, {"code": "01-02", "name": "2 勤務の基礎", "basicMaxPt": 10, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "１ ビジネスマナー", "viewpoints": [{"code": "01-02-01-1", "text": "はっきりと聞き取れるあいさつができる"}, {"code": "01-02-01-2", "text": "毎回身だしなみが整っている"}]}, {"name": "２ 接客用語", "viewpoints": [{"code": "01-02-02-1", "text": "7大用語を口に出して言える"}]}, {"name": "３ お客様対応", "viewpoints": [{"code": "01-02-03-1", "text": "案内されていないお客様に気づき、声をかけて対応することができる"}]}, {"name": "４ 安全・衛生", "viewpoints": [{"code": "01-02-04-1", "text": "毎回正しい手洗いができる"}, {"code": "01-02-04-2", "text": "店内の危険個所を理解している"}, {"code": "01-02-04-3", "text": "クルールームをきれいに使用できる"}]}, {"name": "５ 出退勤手続き", "viewpoints": [{"code": "01-02-05-1", "text": "決まり通りの手続きができる　※出退勤記入、健康チェックが記入できている"}]}]}, {"code": "01-03", "name": "3 作業の知識", "basicMaxPt": 10, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "１ 共通作業項目", "viewpoints": [{"code": "01-03-01-1", "text": "伝票の取り扱い方が理解できる"}, {"code": "01-03-01-2", "text": "コールボタンのコール内容が理解できる"}, {"code": "01-03-01-3", "text": "食材取り扱いの禁止事項が理解でき、決して行っていない"}]}, {"name": "２ 設備・機器", "viewpoints": [{"code": "01-03-02-1", "text": "わからないものでも説明を受けたら理解できる"}]}, {"name": "3 食器・調理道具", "viewpoints": [{"code": "01-03-03-1", "text": "わからないものでも説明を受けたら理解できる"}]}, {"name": "４ 販売商品", "viewpoints": [{"code": "01-03-04-1", "text": "テイクアウトできる範囲を知っている"}]}]}]}, {"code": "02", "name": "キッチン", "chapters": [{"code": "02-01", "name": "1 ディッシュウォッシュ", "basicMaxPt": 6, "advanceMaxPt": 16, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "02-01-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 ソート整理の方法", "viewpoints": [{"code": "02-01-02-1", "text": "整理した食器の間に確実に水分を含ませている"}]}, {"name": "3 下洗いの方法", "viewpoints": [{"code": "02-01-03-1", "text": "洗浄ラックに並べる前に確実に汚れやゴミを取り除いている"}]}, {"name": "4 洗浄方法", "viewpoints": [{"code": "02-01-04-1", "text": "洗浄ラックに隙間なく食器を並べている"}]}, {"name": "5 効率的な洗浄方法", "viewpoints": [{"code": "02-01-05-1", "text": "食器を重ねるときに大きな音を立てていない"}, {"code": "02-01-05-2", "text": "洗浄機が止まる前に次に洗浄するラックの準備が完了している"}]}]}, {"code": "02-02", "name": "2 グラス・ツールウォッシュ", "basicMaxPt": 2, "advanceMaxPt": 3, "hasAdvance": true, "sections": [{"name": "1 ジュースグラスの洗浄方法", "viewpoints": [{"code": "02-02-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 コーヒーカップの洗浄方法", "viewpoints": [{"code": "02-02-02-1", "text": "ラックに並べる前に確実に汚れやゴミを取り除いている"}]}, {"name": "3 ピザカッターの洗浄方法", "viewpoints": [{"code": "02-02-03-1", "text": "確実に汚れを取り除いて容器に仕分けている"}]}, {"name": "4 ボトル類の洗浄方法", "viewpoints": [{"code": "02-02-04-1", "text": "洗浄機にかける前に確実に汚れを取り除いている"}]}]}, {"code": "02-03", "name": "3 カトラリーウォッシュ", "basicMaxPt": 3, "advanceMaxPt": 5, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "02-03-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 カトラリーの下洗い方法", "viewpoints": [{"code": "02-03-02-1", "text": "ラックに移すときに大きな音を立てていない"}, {"code": "02-03-02-2", "text": "ラックに移したときに確実に汚れやゴミを取り除いている"}]}, {"name": "3 カトラリーの仕分け方法", "viewpoints": [{"code": "02-03-03-1", "text": "バスケットに詰めすぎていない"}]}, {"name": "4 カトラリーの乾燥方法", "viewpoints": [{"code": "02-03-04-1", "text": "カトラリーウォーマーに浸ける前に確実に洗浄水を落としている"}]}]}, {"code": "02-04", "name": "4 サラダ・冷前菜", "basicMaxPt": 5, "advanceMaxPt": 9, "hasAdvance": true, "sections": [{"name": "1 基本の流れ（サラダ）", "viewpoints": [{"code": "02-04-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（冷前菜）", "viewpoints": [{"code": "02-04-02-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 サラダ伝票の見方と扱い方", "viewpoints": [{"code": "02-04-03-1", "text": "作業伝票の見方と対応方法を理解している"}]}, {"name": "3 サラダベースの取り出し方", "viewpoints": [{"code": "02-04-04-1", "text": "サラダベースを取り出した後にレタスがむき出しになっていない"}, {"code": "02-04-04-2", "text": "注文数量に応じてサラダベースをまとめて取り出している"}]}, {"name": "4 ドレッシングのかけ方", "viewpoints": [{"code": "02-04-05-1", "text": "レタス全体に規定量のドレッシングをかけている"}]}, {"name": "5 複数同時に調理する方法", "viewpoints": [{"code": "02-04-06-1", "text": "同じ品種を複数調理するときに見た目を合わせている"}, {"code": "02-04-06-2", "text": "複数調理するときに同じ動作をまとめている"}]}, {"name": "6 調理ミス・漏れの確認と対応方法", "viewpoints": [{"code": "02-04-07-1", "text": "注文内容が不明な時にすばやく担当者に確認している"}]}]}, {"code": "02-05", "name": "5 スープ", "basicMaxPt": 2, "advanceMaxPt": 3, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "02-05-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 スープの湯煎方法", "viewpoints": [{"code": "02-05-02-1", "text": "湯煎済みのスープの後ろに確実に入れている"}]}, {"name": "3 スープの注ぎ方", "viewpoints": [{"code": "02-05-03-1", "text": "皿に移す前に包材を3回程度振って最後まで出し切っている"}]}, {"name": "4 電子レンジ加熱での提供方法", "viewpoints": [{"code": "02-05-04-1", "text": "電子レンジ加熱前に確実に包材を振っている"}]}, {"name": "5 複数同時に調理する方法", "viewpoints": [{"code": "02-05-05-1", "text": "複数調理するときに同じ動作をまとめている"}]}, {"name": "6 ピーク後の湯煎スタンバイ対応方法", "viewpoints": [{"code": "02-05-06-1", "text": "HT内に使用できないスープを決まり通り冷却している"}]}]}, {"code": "02-06", "name": "6 ヒート", "basicMaxPt": 10, "advanceMaxPt": 26, "hasAdvance": true, "sections": [{"name": "1 基本の流れ（パスタ商品）", "viewpoints": [{"code": "02-06-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（前菜商品1）", "viewpoints": [{"code": "02-06-02-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（前菜商品2）", "viewpoints": [{"code": "02-06-03-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 パスタのボイル方法", "viewpoints": [{"code": "02-06-04-1", "text": "ボイル後30秒以上経過したときに確実にリボイルしている"}]}, {"name": "3 スパソースの入れ方", "viewpoints": [{"code": "02-06-05-1", "text": "手鍋にスパソースを最後まで出し切っている"}]}, {"name": "4 パスタの混ぜ方", "viewpoints": [{"code": "02-06-06-1", "text": "パスタ全体に確実にソースを絡ませている"}]}, {"name": "5 複数同時に調理する方法", "viewpoints": [{"code": "02-06-07-1", "text": "複数調理するときに同じ動作をまとめている"}]}, {"name": "6 複数調理時の組み立て方法", "viewpoints": [{"code": "02-06-08-1", "text": "前菜商品よりパスタを先に提供していない"}]}, {"name": "7 調理ミス・漏れの確認と対応方法", "viewpoints": [{"code": "02-06-09-1", "text": "注文内容が不明な時にすばやく担当者に確認している"}]}]}, {"code": "02-07", "name": "7 デコレーション", "basicMaxPt": 7, "advanceMaxPt": 18, "hasAdvance": true, "sections": [{"name": "1 基本の流れ（パスタ商品）", "viewpoints": [{"code": "02-07-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（前菜商品1）", "viewpoints": [{"code": "02-07-02-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（前菜商品2）", "viewpoints": [{"code": "02-07-03-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 パスタの盛り付け方", "viewpoints": [{"code": "02-07-04-1", "text": "盛り付けた後に手鍋に具材やソースが残っていない"}]}, {"name": "3 複数同時に調理する方法", "viewpoints": [{"code": "02-07-05-1", "text": "複数調理するときに同じ動作をまとめている"}]}, {"name": "4 調理ミス・漏れの確認と対応方法", "viewpoints": [{"code": "02-07-06-1", "text": "注文内容が不明な時にすばやく担当者に確認している"}]}]}, {"code": "02-08", "name": "8 パンウォッシュ", "basicMaxPt": 1, "advanceMaxPt": 2, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "02-08-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 手鍋の洗い方", "viewpoints": [{"code": "02-08-02-1", "text": "確実に汚れを取り除いて重ねている"}]}, {"name": "3 効率的な手鍋の洗い方", "viewpoints": [{"code": "02-08-03-1", "text": "整理した手鍋の間に確実に水分を含ませている"}, {"code": "02-08-03-2", "text": "シンクのお湯を出しっ放しにしていない"}]}]}, {"code": "02-09", "name": "9 クックイン", "basicMaxPt": 10, "advanceMaxPt": 32, "hasAdvance": true, "sections": [{"name": "1 基本の流れ（前菜商品）", "viewpoints": [{"code": "02-09-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（スープ商品）", "viewpoints": [{"code": "02-09-02-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（ピザ商品）", "viewpoints": [{"code": "02-09-03-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（ドリア・グラタン商品）", "viewpoints": [{"code": "02-09-04-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（HBG・チキン商品）", "viewpoints": [{"code": "02-09-05-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（ステーキ商品）", "viewpoints": [{"code": "02-09-06-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 ジェットオーブンへの並べ方", "viewpoints": [{"code": "02-09-07-1", "text": "コンベアに隙間なく焼成容器を並べている"}, {"code": "02-09-07-2", "text": "オーブン内に焼成容器を押し込んでいない"}]}, {"name": "3 繰り返し加熱の方法", "viewpoints": [{"code": "02-09-08-1", "text": "メニュー写真通りの位置に付け合わせを載せている"}]}, {"name": "4 調理順序の組み立て方", "viewpoints": [{"code": "02-09-09-1", "text": "提供順序通りに提供できる順序で組み立てている"}, {"code": "02-09-09-2", "text": "同品種の商品は同時に提供できる順序で組み立てている"}]}, {"name": "5 複数伝票の組み立て方", "viewpoints": [{"code": "02-09-10-1", "text": "3枚程度の伝票をまとまりとして扱うことができる（A水準は5枚程度）"}]}]}, {"code": "02-10", "name": "10 クックアウト", "basicMaxPt": 8, "advanceMaxPt": 20, "hasAdvance": true, "sections": [{"name": "1 基本の流れ（前菜商品）", "viewpoints": [{"code": "02-10-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（スープ商品）", "viewpoints": [{"code": "02-10-02-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（ピザ商品）", "viewpoints": [{"code": "02-10-03-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（ドリア・グラタン商品）", "viewpoints": [{"code": "02-10-04-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（HBG・チキン商品）", "viewpoints": [{"code": "02-10-05-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "1 基本の流れ（ステーキ商品）", "viewpoints": [{"code": "02-10-06-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 ソースのかけ方", "viewpoints": [{"code": "02-10-07-1", "text": "肉料理の下半分に規定量のソースをこぼさずかけている"}]}, {"name": "3 複数同時に調理する方法", "viewpoints": [{"code": "02-10-08-1", "text": "ステーキ皿を2枚同時にカウンター側に移すことができる"}]}, {"name": "4 効率的なクックアウト方法", "viewpoints": [{"code": "02-10-09-1", "text": "同一伝票内の出来上がった料理は同時にカウンター側に移すことができる"}]}, {"name": "5 調理ミス・漏れの確認と対応方法", "viewpoints": [{"code": "02-10-10-1", "text": "注文内容が不明な時にすばやく担当者に確認している"}]}]}, {"code": "02-11", "name": "11 キッチンスタンバイ", "basicMaxPt": 8, "advanceMaxPt": 20, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "02-11-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる（レタス1袋分）"}]}, {"name": "2 サラダベースのスタンバイ方法", "viewpoints": [{"code": "02-11-02-1", "text": "広げた食器に見た目が同じになるようにレタスを配分している"}]}, {"name": "3 ドリアライスのスタンバイ方法", "viewpoints": [{"code": "02-11-03-1", "text": "グラタン皿に均等にドリアライスを広げている"}]}, {"name": "4 ミラノDのスタンバイ方法", "viewpoints": [{"code": "02-11-04-1", "text": "ドリアライス全体に規定量のドリアソースをかけている"}, {"code": "02-11-04-2", "text": "ドリアソースの上にミートソースをフチから1cmまで広げている"}]}, {"name": "5 ドリアソースのスタンバイ方法", "viewpoints": [{"code": "02-11-05-1", "text": "レトルトトングでホワイトソースを最後まで出し切っている"}, {"code": "02-11-05-2", "text": "ドリアソースを規定時間で撹拌している"}]}, {"name": "6 ミートソースのスタンバイ方法", "viewpoints": [{"code": "02-11-06-1", "text": "ミートソースを最後まで出し切っている"}]}, {"name": "7 コーンのスタンバイ方法", "viewpoints": [{"code": "02-11-07-1", "text": "加熱終了後、コーン全体にドリアソースを絡ませている"}]}, {"name": "8 ディスペンサー類のスタンバイ方法", "viewpoints": [{"code": "02-11-08-1", "text": "材料を最後まで出し切っている"}]}, {"name": "9 ピーク前のスタンバイ方法", "viewpoints": [{"code": "02-11-09-1", "text": "ピーク前に持ち場を離れなくて済むように準備している"}, {"code": "02-11-09-2", "text": "指定温度帯を守れないような過剰スタンバイをしていない"}]}]}, {"code": "02-12", "name": "12 解凍", "basicMaxPt": 7, "advanceMaxPt": 14, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "02-12-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}, {"code": "02-12-01-2", "text": "標準解凍表の見方と扱い方を理解している"}, {"code": "02-12-01-3", "text": "解凍する食材を確実にHTがわかるように保管している"}, {"code": "02-12-01-4", "text": "冷凍食材を常温で解凍していない"}, {"code": "02-12-01-5", "text": "解凍するときに同じ動作をまとめている"}]}, {"name": "2 ＨＴシールの記入方法", "viewpoints": [{"code": "02-12-02-1", "text": "HTシールの見方と扱い方を理解している"}]}, {"name": "3 ＨＴシールの貼付方法", "viewpoints": [{"code": "02-12-03-1", "text": "ＨＴがわかるようにＨＴシールを張り付けている"}]}, {"name": "4 緊急解凍方法", "viewpoints": [{"code": "02-12-04-1", "text": "解凍終了後、速やかに冷蔵保管している"}]}]}, {"code": "02-13", "name": "13 納品整理", "basicMaxPt": 9, "advanceMaxPt": 18, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "02-13-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 食材の収納方法", "viewpoints": [{"code": "02-13-02-1", "text": "食材の所定位置に整頓して食材を保管している"}, {"code": "02-13-02-2", "text": "食材収納時に確実に古い食材を先に使える順で並べている"}, {"code": "02-13-02-3", "text": "冷凍→冷蔵→常温の順に所定位置に保管している"}, {"code": "02-13-02-4", "text": "食材や食材の入った番重を床に直置きしていない"}]}, {"name": "3 資材の返却方法", "viewpoints": [{"code": "02-13-03-1", "text": "返却前に確実に汚れを取り除いている"}, {"code": "02-13-03-2", "text": "返却前に確実に種類ごとに仕分けている"}]}]}, {"code": "02-14", "name": "14 テイクアウト", "basicMaxPt": 2, "advanceMaxPt": 4, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "02-14-01-1", "text": "決まり通りの手順で目安水準時間以内に完了できる"}]}, {"name": "2 専用容器の使い方", "viewpoints": [{"code": "02-14-02-1", "text": "使用する容器と調理手順を理解している"}, {"code": "02-14-02-2", "text": "梱包時に確実に専用容器や袋の口を閉じている"}]}]}]}, {"code": "03", "name": "フロア", "chapters": [{"code": "03-01", "name": "1 ベリフィケーション", "basicMaxPt": 6, "advanceMaxPt": 24, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-01-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}, {"code": "03-01-01-2", "text": "料理（食材）に直接手を触れていない"}]}, {"name": "2 提供基準に満たない料理", "viewpoints": [{"code": "03-01-02-1", "text": "提供基準未満の料理は、キッチン担当者に手直しまたは作り直ししてもらっている"}]}, {"name": "3 ライスの盛り方", "viewpoints": [{"code": "03-01-03-1", "text": "ライスを1日1回計量している"}, {"code": "03-01-03-2", "text": "しゃもじを縦に使って、ライスを円形にふわっと盛れている"}]}, {"name": "4 調理伝票の処理", "viewpoints": [{"code": "03-01-04-1", "text": "調理伝票の全ての略語に線を引いてから捨てている"}, {"code": "03-01-04-2", "text": "調理伝票に間違って線を引いた場合の修正ができる"}]}, {"name": "5 料理の仕分け方", "viewpoints": [{"code": "03-01-05-1", "text": "料理を手順通りに仕分けることができる"}]}, {"name": "6 各種伝票の処理", "viewpoints": [{"code": "03-01-06-1", "text": "料理の提供遅れやお客様伝票の配り忘れに気付き、対応している"}]}]}, {"code": "03-02", "name": "2 サービング", "basicMaxPt": 8, "advanceMaxPt": 18, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-02-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}]}, {"name": "2 料理の持ち方", "viewpoints": [{"code": "03-02-02-1", "text": "お皿2枚持ちができる"}, {"code": "03-02-02-2", "text": "お皿3枚持ちができる"}, {"code": "03-02-02-3", "text": "禁止事例のような持ち方をしていない"}, {"code": "03-02-02-4", "text": "仕分けられた料理を素早く持ち、目安10秒以内にカウンターから出ている"}]}, {"name": "3 料理の置き方", "viewpoints": [{"code": "03-02-03-1", "text": "大きな音を立てずに置いている"}, {"code": "03-02-03-2", "text": "禁止事例のような置き方をしていない"}]}, {"name": "4 アルコール商品の提供", "viewpoints": [{"code": "03-02-04-1", "text": "グラスは下部を持ち、口元に触れていない"}]}, {"name": "5 効率的なサービング", "viewpoints": [{"code": "03-02-05-1", "text": "複数テーブルに運ぶ際、近いテーブルからサービングしている"}]}, {"name": "6 お客様伝票の処理", "viewpoints": [{"code": "03-02-06-1", "text": "お客様伝票の再発行ができる"}]}]}, {"code": "03-03", "name": "3 ミドルクリーンアップ", "basicMaxPt": 4, "advanceMaxPt": 10, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-03-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}, {"code": "03-03-01-2", "text": "禁止行為をしていない"}]}, {"name": "2 確実なミドルクリーンアップ", "viewpoints": [{"code": "03-03-02-1", "text": "食器がテーブルの端にまとめられている場合、お声がけして食器を下げている"}]}]}, {"code": "03-04", "name": "4 ファイナルクリーンアップ", "basicMaxPt": 5, "advanceMaxPt": 12, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-04-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}]}, {"name": "2 皿の片付け方", "viewpoints": [{"code": "03-04-02-1", "text": "禁止事例のような持ち方をしていない"}]}, {"name": "3 グラス・カップ等の片付け方", "viewpoints": [{"code": "03-04-03-1", "text": "グラス・カップを正しい持ち方で持っている"}, {"code": "03-04-03-2", "text": "ゴミをグラスに詰めていない"}, {"code": "03-04-03-3", "text": "ベビーチェアの片付けを手順通り実施できる"}]}, {"name": "4 食器の仕分け方", "viewpoints": [{"code": "03-04-04-1", "text": "グラスは、グラス入れに奥から入れ、ストローやゴミを取り除いている"}, {"code": "03-04-04-2", "text": "カトラリー・ピザカッターを容器に投げ入れていない"}, {"code": "03-04-04-3", "text": "下駄を専用ダスターで拭き、定位置に揃えている"}, {"code": "03-04-04-4", "text": "ソートで人が重なった場合の対応ができる"}]}, {"name": "5 効率的なクリーンアップ", "viewpoints": [{"code": "03-04-05-1", "text": "複数テーブルのクリーンアップが発生した場合、優先するテーブルを判断できる"}, {"code": "03-04-05-2", "text": "食器の量が少ない場合、ミドルとファイナルクリーンアップを続けて実施できる"}]}]}, {"code": "03-05", "name": "5 ラウンド", "basicMaxPt": 2, "advanceMaxPt": 5, "hasAdvance": true, "sections": [{"name": "1 客席", "viewpoints": [{"code": "03-05-01-1", "text": "決まり通りの手順で実施できる"}]}, {"name": "2 ドリンクバー", "viewpoints": [{"code": "03-05-02-1", "text": "決まり通りの手順で実施できる"}]}, {"name": "3 トイレ", "viewpoints": [{"code": "03-05-03-1", "text": "決まり通りの手順で実施できる"}]}, {"name": "4 入口", "viewpoints": [{"code": "03-05-04-1", "text": "決まり通りの手順で実施できる"}]}]}, {"code": "03-06", "name": "6 フロアスタンバイ", "basicMaxPt": 3, "advanceMaxPt": 5, "hasAdvance": true, "sections": [{"name": "1 客席", "viewpoints": [{"code": "03-06-01-1", "text": "お客様のご利用の妨げにならないように作業している"}]}, {"name": "2 ドリンクバー", "viewpoints": [{"code": "03-06-02-1", "text": "お客様のご利用の妨げにならないように作業している"}]}, {"name": "3 カウンター", "viewpoints": [{"code": "03-06-03-1", "text": "決まり通りの手順で実施できる"}]}, {"name": "4 ドリンク場", "viewpoints": [{"code": "03-06-04-1", "text": "決まり通りの手順で実施できる"}]}, {"name": "５ ジュースディスペンサー", "viewpoints": [{"code": "03-06-05-1", "text": "シロップのハネや漏れを起こさずに交換できる"}]}, {"name": "６ カトラリーカセットの作成", "viewpoints": [{"code": "03-06-06-1", "text": "響き渡るような大きな音を立てずに作業できる"}, {"code": "03-06-06-2", "text": "1本ずつ汚れの有無を確認しながら手際よく作業できる"}]}, {"name": "７ ライスの炊飯", "viewpoints": [{"code": "03-06-07-1", "text": "決まり通りの手順で実施できる"}]}, {"name": "８ 調味料の準備", "viewpoints": [{"code": "03-06-08-1", "text": "決まり通りの手順で実施できる"}]}]}, {"code": "03-07", "name": "7 セットアップ", "basicMaxPt": 1, "advanceMaxPt": 3, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-07-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}, {"code": "03-07-01-2", "text": "ファイナルクリーンアップ済のテーブルを素早く見つけることができる"}]}, {"name": "2 席の整え方", "viewpoints": [{"code": "03-07-02-1", "text": "カトラリーカセットを大きな音を立てずにリストックできる"}]}, {"name": "3 効率的なセットアップ", "viewpoints": [{"code": "03-07-03-1", "text": "一時置き場を使ったセットアップができる"}]}]}, {"code": "03-08", "name": "8 ドリンク", "basicMaxPt": 5, "advanceMaxPt": 10, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-08-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}]}, {"name": "2 お客様伝票の処理", "viewpoints": [{"code": "03-08-02-1", "text": "ドリンクプリンタからお客様伝票が出てきた場合の対応ができる"}]}, {"name": "3 効率的なドリンク", "viewpoints": [{"code": "03-08-03-1", "text": "ドリンクオーダーが集中した場合の手順を実施している"}]}, {"name": "４ 備品・食材のリストック", "viewpoints": [{"code": "03-08-04-1", "text": "無くなりそうなときに責任者に報告している"}]}]}, {"code": "03-09", "name": "9 キャッシャー", "basicMaxPt": 4, "advanceMaxPt": 12, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-09-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}]}, {"name": "2 追加の会計手順①", "viewpoints": [{"code": "03-09-02-1", "text": "個別会計ができる"}, {"code": "03-09-02-2", "text": "合算対応ができる"}, {"code": "03-09-02-3", "text": "領収証の発行ができる"}]}, {"name": "3 追加の会計手順②", "viewpoints": [{"code": "03-09-03-1", "text": "株主優待お食事券、食事30％割引券の対応ができる"}]}, {"name": "4 伝票に不備がある場合の対応", "viewpoints": [{"code": "03-09-04-1", "text": "伝票に不備がある場合の対応を理解し実行できる"}]}, {"name": "5 ロール紙の交換方法", "viewpoints": [{"code": "03-09-05-1", "text": "決まり通りの手順で一度で実施できる"}]}]}, {"code": "03-10", "name": "10 オーダーテイキング", "basicMaxPt": 8, "advanceMaxPt": 16, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-10-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}, {"code": "03-10-01-2", "text": "禁止事項をしていない"}]}, {"name": "2 注文用紙の確認方法", "viewpoints": [{"code": "03-10-02-1", "text": "注文用紙の確認を手順通りに実施できる"}]}, {"name": "３ オーダー端末操作_準備", "viewpoints": [{"code": "03-10-03-1", "text": "毎回落下防止措置をとっている"}]}, {"name": "４ オーダー端末操作_基本①新規", "viewpoints": [{"code": "03-10-04-1", "text": "付属品のあるメニューの入力ができる"}, {"code": "03-10-04-2", "text": "お客様から要望のあるメニューに指示内容を入力できる"}, {"code": "03-10-04-3", "text": "ドリンクバーの種類を注文内容やお客様の年齢に応じて正しく入力できる"}]}, {"name": "５ オーダー端末操作_基本②追加・修正", "viewpoints": [{"code": "03-10-05-1", "text": "注文内容の修正ができる"}, {"code": "03-10-05-2", "text": "アフター（A）登録されている商品の提供指示を入力できる"}]}, {"name": "6 オーダー端末操作応用", "viewpoints": [{"code": "03-10-06-1", "text": "サラダ伝票に印字される注文内容のみの場合に「…客伝配る」を入力できる"}, {"code": "03-10-06-2", "text": "単品ドリンクバーからセットドリンクバーへの変更ができる"}, {"code": "03-10-06-3", "text": "テーブル分割を正しく入力できる"}, {"code": "03-10-06-4", "text": "複数テーブルの会計を一緒に行う可能性がある場合、合算登録している"}]}, {"name": "７ 確認が必要な注文への対応", "viewpoints": [{"code": "03-10-07-1", "text": "アルコール商品の注文を受けた場合の対応ができる"}, {"code": "03-10-07-2", "text": "お客様から質問を受けた場合の対応ができる"}]}, {"name": "8 効率的なオーダーテイキング", "viewpoints": [{"code": "03-10-08-1", "text": "複数のテーブル番号が表示されている場合の対応ができる"}]}]}, {"code": "03-11", "name": "11 ウェルカム", "basicMaxPt": 10, "advanceMaxPt": 26, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-11-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}]}, {"name": "2 ピークイン～満席", "viewpoints": [{"code": "03-11-02-1", "text": "効率よく多くのお客様をむかえ入れている"}]}, {"name": "3 満席時", "viewpoints": [{"code": "03-11-03-1", "text": "客席をすぐに埋めている"}]}, {"name": "4 ピークアウト～アイドル", "viewpoints": [{"code": "03-11-04-1", "text": "選べる席を多く整えている"}]}, {"name": "5 小さなお子様連れの対応", "viewpoints": [{"code": "03-11-05-1", "text": "ベビーチェアの正しい使い方ができる"}]}, {"name": "6 配慮が必要なお客様の対応", "viewpoints": [{"code": "03-11-06-1", "text": "配慮が必要なお客様の対応を理解している"}]}, {"name": "7 品切れがある場合の対応", "viewpoints": [{"code": "03-11-07-1", "text": "品切れ商品がある場合の対応ができる"}]}, {"name": "8 効率的なウェルカム", "viewpoints": [{"code": "03-11-08-1", "text": "効率的なウェルカムが実施できる"}]}]}, {"code": "03-12", "name": "12 ナビゲーション", "basicMaxPt": 3, "advanceMaxPt": 6, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-12-01-1", "text": "決まり通りの手順で目安水準時間以内に実施できる"}]}, {"name": "2 効率的なナビゲーション", "viewpoints": [{"code": "03-12-02-1", "text": "一人で二組を連続して誘導することができる"}, {"code": "03-12-02-2", "text": "他の従業員と連携して誘導することができる"}]}]}, {"code": "03-13", "name": "13 テイクアウト", "basicMaxPt": 1, "advanceMaxPt": 3, "hasAdvance": true, "sections": [{"name": "1 基本の流れ", "viewpoints": [{"code": "03-13-01-1", "text": "決まり通りの手順で実施できる"}]}, {"name": "2 食材・調味料の販売", "viewpoints": [{"code": "03-13-02-1", "text": "決まり通りの手順で実施できる"}, {"code": "03-13-02-2", "text": "不適切な（基準以下の）商品を販売していない"}]}, {"name": "3 電話受付の対応", "viewpoints": [{"code": "03-13-03-1", "text": "決まり通りの手順で実施できる"}]}]}]}, {"code": "04", "name": "メンテナンス", "chapters": [{"code": "04-01", "name": "1 KDアイドル～", "basicMaxPt": 6, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "KD01", "viewpoints": [{"code": "04-01-01-1", "text": "電子レンジ"}]}, {"name": "KD02", "viewpoints": [{"code": "04-01-02-1", "text": "ジェットオーブン"}]}, {"name": "KD03", "viewpoints": [{"code": "04-01-03-1", "text": "コールドテーブル・ドリアテーブル"}]}, {"name": "KD04", "viewpoints": [{"code": "04-01-04-1", "text": "ヒート側過熱設備全域"}]}, {"name": "KD07", "viewpoints": [{"code": "04-01-05-1", "text": "キッチンシンク"}]}, {"name": "KD08・09", "viewpoints": [{"code": "04-01-06-1", "text": "キッチン床"}]}, {"name": "KD10・11・16", "viewpoints": [{"code": "04-01-07-1", "text": "グリーストラップ・グリスシールド"}]}, {"name": "KD20", "viewpoints": [{"code": "04-01-08-1", "text": "冷蔵庫・冷凍庫"}]}]}, {"code": "04-02", "name": "2 KDクローズ", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "KD12", "viewpoints": [{"code": "04-02-01-1", "text": "洗い場・ソート周辺"}]}, {"name": "KD13・14", "viewpoints": [{"code": "04-02-02-1", "text": "洗浄機クローズ"}]}, {"name": "KD15", "viewpoints": [{"code": "04-02-03-1", "text": "スポンジ管理"}]}, {"name": "KD18・19", "viewpoints": [{"code": "04-02-04-1", "text": "ゆで麺機"}]}, {"name": "D02", "viewpoints": [{"code": "04-02-05-1", "text": "パイ皿（ピザ用・フォッカチオ用）"}]}, {"name": "D03", "viewpoints": [{"code": "04-02-06-1", "text": "調理器具"}]}]}, {"code": "04-03", "name": "3 KWMオープン", "basicMaxPt": 2, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "KW02", "viewpoints": [{"code": "04-03-01-1", "text": "ディスペンサー容器"}]}, {"name": "KM02", "viewpoints": [{"code": "04-03-02-1", "text": "吊り棚・フード外部・フード内部"}]}, {"name": "KM12", "viewpoints": [{"code": "04-03-03-1", "text": "給排気口"}]}]}, {"code": "04-04", "name": "4 KWMアイドル～", "basicMaxPt": 6, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "KW04", "viewpoints": [{"code": "04-04-01-1", "text": "キッチン棚"}]}, {"name": "KM01", "viewpoints": [{"code": "04-04-02-1", "text": "ゴミ箱"}]}, {"name": "KM05", "viewpoints": [{"code": "04-04-03-1", "text": "製氷機"}]}, {"name": "KM09・10", "viewpoints": [{"code": "04-04-04-1", "text": "ゴミ置き場・ワイドペール"}]}, {"name": "KM11", "viewpoints": [{"code": "04-04-05-1", "text": "機器フィルター"}]}, {"name": "KM04", "viewpoints": [{"code": "04-04-06-1", "text": "ウォークイン床・扉"}]}, {"name": "KM07", "viewpoints": [{"code": "04-04-07-1", "text": "グリーストラップフタ"}]}, {"name": "KM08", "viewpoints": [{"code": "04-04-08-1", "text": "排水桝"}]}, {"name": "KM14", "viewpoints": [{"code": "04-04-09-1", "text": "冷蔵庫・冷凍庫"}]}, {"name": "KM15", "viewpoints": [{"code": "04-04-10-1", "text": "ウォークインラック・リーチイン"}]}, {"name": "定期01", "viewpoints": [{"code": "04-04-11-1", "text": "熱交換器"}]}]}, {"code": "04-05", "name": "5 FDオープン", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "FR00", "viewpoints": [{"code": "04-05-01-1", "text": "定時消毒"}]}, {"name": "FR03", "viewpoints": [{"code": "04-05-02-1", "text": "駐車場"}]}, {"name": "FD01", "viewpoints": [{"code": "04-05-03-1", "text": "フロア床"}]}, {"name": "FD02", "viewpoints": [{"code": "04-05-04-1", "text": "トイレ"}]}, {"name": "FD11", "viewpoints": [{"code": "04-05-05-1", "text": "入口"}]}, {"name": "FD18", "viewpoints": [{"code": "04-05-06-1", "text": "ホコリとり"}]}, {"name": "FD19", "viewpoints": [{"code": "04-05-07-1", "text": "レジ・ステーション"}]}]}, {"code": "04-06", "name": "6 FDアイドル～", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "FR00", "viewpoints": [{"code": "04-06-01-1", "text": "定時消毒"}]}, {"name": "FR01", "viewpoints": [{"code": "04-06-02-1", "text": "入口"}]}, {"name": "FR02", "viewpoints": [{"code": "04-06-03-1", "text": "トイレ"}]}, {"name": "FR03", "viewpoints": [{"code": "04-06-04-1", "text": "駐車場"}]}, {"name": "FR04", "viewpoints": [{"code": "04-06-05-1", "text": "ドリンクバー"}]}, {"name": "FD04", "viewpoints": [{"code": "04-06-06-1", "text": "エクイップメント"}]}, {"name": "FD06", "viewpoints": [{"code": "04-06-07-1", "text": "客席パーティション"}]}, {"name": "FD08", "viewpoints": [{"code": "04-06-08-1", "text": "カウンタークローズ"}]}, {"name": "FD09", "viewpoints": [{"code": "04-06-09-1", "text": "ドリンク場クローズ"}]}, {"name": "FD14・15", "viewpoints": [{"code": "04-06-10-1", "text": "スープタンク・ドリップマシンクローズ"}]}]}, {"code": "04-07", "name": "7 FDクローズ", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "FD03", "viewpoints": [{"code": "04-07-01-1", "text": "自動釣銭機"}]}, {"name": "FD05", "viewpoints": [{"code": "04-07-02-1", "text": "コーヒーマシン（グループ）"}]}, {"name": "FD10", "viewpoints": [{"code": "04-07-03-1", "text": "ドリンクバークローズ"}]}, {"name": "FD12・13", "viewpoints": [{"code": "04-07-04-1", "text": "樽冷・瞬冷ビールディスペンサー"}]}, {"name": "FD16", "viewpoints": [{"code": "04-07-05-1", "text": "ジュースディスペンサークローズ"}]}, {"name": "FD17", "viewpoints": [{"code": "04-07-06-1", "text": "コーヒーマシンクローズ"}]}]}, {"code": "04-08", "name": "8 FWMオープン", "basicMaxPt": 8, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "FW01", "viewpoints": [{"code": "04-08-01-1", "text": "トイレ"}]}, {"name": "FW03", "viewpoints": [{"code": "04-08-02-1", "text": "ホコリ取り"}]}, {"name": "FM02", "viewpoints": [{"code": "04-08-03-1", "text": "アイスストッカー"}]}, {"name": "FM06", "viewpoints": [{"code": "04-08-04-1", "text": "客席周り"}]}, {"name": "FM08", "viewpoints": [{"code": "04-08-05-1", "text": "ガラス"}]}, {"name": "FM09", "viewpoints": [{"code": "04-08-06-1", "text": "ホコリ取り"}]}, {"name": "FM14", "viewpoints": [{"code": "04-08-07-1", "text": "休憩室・靴箱"}]}, {"name": "FM15・16", "viewpoints": [{"code": "04-08-08-1", "text": "店舗外周"}]}, {"name": "FM17", "viewpoints": [{"code": "04-08-09-1", "text": "ステーション・腰板周辺"}]}]}, {"code": "04-09", "name": "9 FWMアイドル～", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "FW04", "viewpoints": [{"code": "04-09-01-1", "text": "手洗い器"}]}, {"name": "FW05", "viewpoints": [{"code": "04-09-02-1", "text": "ドリンクバー"}]}, {"name": "FW08・09", "viewpoints": [{"code": "04-09-03-1", "text": "スープタンク・ドリップマシンクローズ"}]}, {"name": "FW10", "viewpoints": [{"code": "04-09-04-1", "text": "両面ゲタ"}]}, {"name": "FW12", "viewpoints": [{"code": "04-09-05-1", "text": "スープタンク置き場"}]}, {"name": "FM04", "viewpoints": [{"code": "04-09-06-1", "text": "ドリンクバー・ラックレーン"}]}, {"name": "FM05", "viewpoints": [{"code": "04-09-07-1", "text": "レジ・入口周辺"}]}, {"name": "FM07", "viewpoints": [{"code": "04-09-08-1", "text": "ベビーチェア"}]}, {"name": "M01", "viewpoints": [{"code": "04-09-09-1", "text": "オルガナイザー"}]}, {"name": "M02", "viewpoints": [{"code": "04-09-10-1", "text": "カトラリーカセット"}]}, {"name": "M03", "viewpoints": [{"code": "04-09-11-1", "text": "カトラリー"}]}, {"name": "定期02", "viewpoints": [{"code": "04-09-12-1", "text": "室外機"}]}]}, {"code": "04-10", "name": "10 FWMクローズ", "basicMaxPt": 6, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "FW02", "viewpoints": [{"code": "04-10-01-1", "text": "自動釣銭機"}]}, {"name": "FW06・07", "viewpoints": [{"code": "04-10-02-1", "text": "樽冷・瞬冷ビールディスペンサー"}]}, {"name": "FW13", "viewpoints": [{"code": "04-10-03-1", "text": "ビールディスペンサー洗浄タンク"}]}, {"name": "FM01", "viewpoints": [{"code": "04-10-04-1", "text": "アイスビーン"}]}, {"name": "FM03", "viewpoints": [{"code": "04-10-05-1", "text": "コーヒーマシン"}]}, {"name": "FM10", "viewpoints": [{"code": "04-10-06-1", "text": "エアコンフィルター"}]}, {"name": "FM11", "viewpoints": [{"code": "04-10-07-1", "text": "スプレーボトル"}]}, {"name": "FM13", "viewpoints": [{"code": "04-10-08-1", "text": "飲料提供容器リセット"}]}]}, {"code": "04-11", "name": "11 CDオープン", "basicMaxPt": 6, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "CD01", "viewpoints": [{"code": "04-11-01-1", "text": "商品温度"}]}, {"name": "CD02", "viewpoints": [{"code": "04-11-02-1", "text": "機器温度"}]}, {"name": "CD03", "viewpoints": [{"code": "04-11-03-1", "text": "機器塩分濃度"}]}]}, {"code": "04-12", "name": "12 CWMオープン", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "CM04", "viewpoints": [{"code": "04-12-01-1", "text": "コーヒー抽出"}]}, {"name": "CM05", "viewpoints": [{"code": "04-12-02-1", "text": "ミルク抽出"}]}, {"name": "CM06", "viewpoints": [{"code": "04-12-03-1", "text": "お茶用お湯抽出"}]}, {"name": "CM08", "viewpoints": [{"code": "04-12-04-1", "text": "ネジ緩み"}]}, {"name": "CM09", "viewpoints": [{"code": "04-12-05-1", "text": "ベンチシート破れ"}]}, {"name": "CM11", "viewpoints": [{"code": "04-12-06-1", "text": "キッチン水漏れ・排水ドレン破損"}]}, {"name": "CM12", "viewpoints": [{"code": "04-12-07-1", "text": "壁紙はがれ"}]}, {"name": "CM13", "viewpoints": [{"code": "04-12-08-1", "text": "店舗外周状態"}]}, {"name": "CM17", "viewpoints": [{"code": "04-12-09-1", "text": "ジュース温度"}]}]}, {"code": "04-13", "name": "13 CWMアイドル～", "basicMaxPt": 5, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "CW01", "viewpoints": [{"code": "04-13-01-1", "text": "ネズミ・衛生害虫モニタリング"}]}, {"name": "CM01", "viewpoints": [{"code": "04-13-02-1", "text": "温度計精度"}]}, {"name": "CM02", "viewpoints": [{"code": "04-13-03-1", "text": "機器温度"}]}, {"name": "CM03", "viewpoints": [{"code": "04-13-04-1", "text": "加熱機能"}]}, {"name": "CM07", "viewpoints": [{"code": "04-13-05-1", "text": "排気量"}]}, {"name": "CM10", "viewpoints": [{"code": "04-13-06-1", "text": "排水量"}]}, {"name": "CM14", "viewpoints": [{"code": "04-13-07-1", "text": "ドリンクバー水漏れ"}]}, {"name": "CM15", "viewpoints": [{"code": "04-13-08-1", "text": "お湯流し装置稼働"}]}]}, {"code": "04-14", "name": "14 特殊対応", "basicMaxPt": 1, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 突発的な清掃", "viewpoints": [{"code": "04-14-01-1", "text": "被害拡大の防止措置を速やかにとることができる"}, {"code": "04-14-01-2", "text": "状況に応じたふさわしい道具と手順で清掃することができる"}]}]}, {"code": "04-15", "name": "15 保守", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 清掃用具の管理", "viewpoints": [{"code": "04-15-01-1", "text": "使った道具は正しい手順できれいにしてから指定場所に戻している"}]}]}, {"code": "04-16", "name": "16 交換", "basicMaxPt": 2, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 備品の交換", "viewpoints": [{"code": "04-16-01-1", "text": "使用してはいけない備品の水準を理解している"}]}]}]}, {"code": "05", "name": "プライオリティ", "chapters": [{"code": "05-01", "name": "1 知識", "basicMaxPt": 5, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 作業の優先順位の原則", "viewpoints": [{"code": "05-01-01-1", "text": "作業の優先順位を理解している"}, {"code": "05-01-01-2", "text": "作業が重複した場合の対応を理解している"}, {"code": "05-01-01-3", "text": "プライオリティにおける2つのルールを言える"}]}, {"name": "2 作業発生のタイミング", "viewpoints": [{"code": "05-01-02-1", "text": "作業が発生する音の種類と発生する作業を理解している"}, {"code": "05-01-02-2", "text": "入店やお帰りのお客様を見つけて声がけし、他の従業員に知らせている"}, {"code": "05-01-02-3", "text": "お客様を無視していない、そう受け止められる行為をしていない"}, {"code": "05-01-02-4", "text": "すぐに対応できない場合は、必ず「お待たせしました」と伝え対応している"}]}, {"name": "3 ポジションの考え方", "viewpoints": [{"code": "05-01-03-1", "text": "作業割り当て記号の見方を理解している"}, {"code": "05-01-03-2", "text": "コア作業とメイン作業、フォロー作業の違いを理解している"}, {"code": "05-01-03-3", "text": "当日の割り当てられたポジションのメイン作業を確認している"}, {"code": "05-01-03-4", "text": "メイン作業の順番に作業しつつも、サービング作業発生時には反応できる"}, {"code": "05-01-03-5", "text": "お互いアイコンタクトや声かけをして作業のの重複を事前に回避している"}]}]}, {"code": "05-02", "name": "2 初級", "basicMaxPt": 10, "advanceMaxPt": 20, "hasAdvance": true, "sections": [{"name": "1 基本の動き（ケース1）", "viewpoints": [{"code": "05-02-01-1", "text": "サービングとキャッシャーが同時に発生した場合はサービングを優先している"}, {"code": "05-02-01-2", "text": "一度持った料理を置いてキャッシャー作業を行っていない"}]}, {"name": "2 基本の動き（ケース2）", "viewpoints": [{"code": "05-02-02-1", "text": "クリーンアップとキャッシャーが重複した場合はクリーンアップを優先している"}, {"code": "05-02-02-2", "text": "正しい一時置き場の使い方ができる"}]}, {"name": "3 基本の動き（ケース3）", "viewpoints": [{"code": "05-02-03-1", "text": "料理が冷める可能性がある場合はサービングを優先している"}, {"code": "05-02-03-2", "text": "フロアに出たときにはついで作業をして戻っている"}]}]}, {"code": "05-03", "name": "3 中級", "basicMaxPt": 15, "advanceMaxPt": 30, "hasAdvance": true, "sections": [{"name": "1 基本の動き（ケース4）", "viewpoints": [{"code": "05-03-01-1", "text": "サービングとウェルカムが重複した場合に適切な対応をしている"}, {"code": "05-03-01-2", "text": "ウェルカムに時間がかかりそうな場合はサービングを優先している"}]}, {"name": "2 基本の動き（ケース5）", "viewpoints": [{"code": "05-03-02-1", "text": "オーダーが連続発生しているときの新規ご来店に対して適切な対応をしている"}, {"code": "05-03-02-2", "text": "ウェルカムに時間がかかりそうな場合はオーダーを優先している"}]}]}]}, {"code": "06", "name": "トレーニング", "chapters": [{"code": "06-01", "name": "1 知識", "basicMaxPt": 5, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 トレーニングの原則", "viewpoints": [{"code": "06-01-01-1", "text": "トレーニングの原則を理解している"}, {"code": "06-01-01-2", "text": "店舗のトレーニングに関する情報やトレーニング課題を理解している"}]}, {"name": "2 トレーナーの原則", "viewpoints": [{"code": "06-01-02-1", "text": "トレーナー自らが正確な作業と水準以上の作業スピードを習得している"}, {"code": "06-01-02-2", "text": "トレーニーに対して敬意を払い、丁寧に接している"}, {"code": "06-01-02-3", "text": "模範となるアピアランスや時間管理ができる"}, {"code": "06-01-02-4", "text": "トレーナーが行う業務のサイクルを理解して実施している"}]}]}, {"code": "06-02", "name": "2 準備", "basicMaxPt": 5, "advanceMaxPt": 10, "hasAdvance": true, "sections": [{"name": "1 トレーニング計画", "viewpoints": [{"code": "06-02-01-1", "text": "トレーニングを計画するツールの見方と使い方を理解している"}]}, {"name": "2 事前準備", "viewpoints": [{"code": "06-02-02-1", "text": "トレーニングする作業やゴール状態を確認してから実施している"}, {"code": "06-02-02-2", "text": "トレーニーの作業習得状況の確認を実施している"}]}]}, {"code": "06-03", "name": "3 実践", "basicMaxPt": 20, "advanceMaxPt": 40, "hasAdvance": true, "sections": [{"name": "1 トレーニングの実施手順", "viewpoints": [{"code": "06-03-01-1", "text": "トレーニングの開始前に、お客様の期待と目標の説明を行っている"}, {"code": "06-03-01-2", "text": "トレーニーの当日のトレーニング目標を設定している"}, {"code": "06-03-01-3", "text": "マニュアル通りの手順と動作の説明を行っている"}, {"code": "06-03-01-4", "text": "「説明しながら」と「基準となる作業スピード」の2つの手本を示している"}, {"code": "06-03-01-5", "text": "トレーニーの質問や疑問点を都度解消しながら進めている"}, {"code": "06-03-01-6", "text": "マニュアルの手順や動作と異なる点を発見し、適切なタイミングで修正している"}, {"code": "06-03-01-7", "text": "お客様に怪我や汚損など危険が及ぶ恐れがある状態でやらせていない"}, {"code": "06-03-01-8", "text": "トレーニーの作業の改善点に対してタイムリーかつ具体的に褒めている"}, {"code": "06-03-01-9", "text": "1時間あたりフィードバックを3回以上行っている"}, {"code": "06-03-01-10", "text": "トレーニングの最後にトレーニーの目標に対する振り返りを行っている"}, {"code": "06-03-01-11", "text": "トレーニングマニュアルチェックリストの見方と使い方を理解して実施している"}]}, {"name": "2 トレーニング実施後の報告", "viewpoints": [{"code": "06-03-02-1", "text": "終了後、トレーニング実施内容をストアマネジャーに報告している"}]}]}]}, {"code": "07", "name": "オープニング", "chapters": [{"code": "07-01", "name": "1 緊急連絡", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 関係者とフォロー体制", "viewpoints": [{"code": "07-01-01-1", "text": "どのような状況時に電話連絡するのか理解している"}, {"code": "07-01-01-2", "text": "『緊急時の初期対応・連絡先一覧』の掲示場所を知っている"}, {"code": "07-01-01-3", "text": "連絡先の優先順位を理解している"}]}]}, {"code": "07-02", "name": "2 実務", "basicMaxPt": 26, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 入店時管理", "viewpoints": [{"code": "07-02-01-1", "text": "駐車場・店舗外観の確認を手順通り実施している"}, {"code": "07-02-01-2", "text": "違法駐車、放置自転車がある場合、手順通り対応している"}, {"code": "07-02-01-3", "text": "店舗外観に異常がある場合の対応を理解している"}, {"code": "07-02-01-4", "text": "バックヤード開錠、警備解除、ガス元栓の開栓を手順通り実施している"}, {"code": "07-02-01-5", "text": "社内メール・通達を確認し、未確認情報の添付ファイルを印刷している"}, {"code": "07-02-01-6", "text": "仕込み量目安シートを印刷している"}, {"code": "07-02-01-7", "text": "レジの開店処理を手順通り実施している"}, {"code": "07-02-01-8", "text": "セーフティボックスを開けたままその場から離れていない"}, {"code": "07-02-01-9", "text": "レジ以外の場所で釣銭を取り扱っていない"}, {"code": "07-02-01-10", "text": "釣銭金と入金の差額がゼロでない場合の対応方法を理解している"}, {"code": "07-02-01-11", "text": "オーダー端末の台数カウントとマスタ受信を実施している"}, {"code": "07-02-01-12", "text": "『店舗運営管理記録表』の項目欄に記入している"}, {"code": "07-02-01-13", "text": "日計点検(ダブルチェック)を手順通り実施している"}]}, {"name": "2 開店前管理", "viewpoints": [{"code": "07-02-02-1", "text": "開店前作業を営業開始時刻までに漏れなく実施している"}, {"code": "07-02-02-2", "text": "設備・機器の稼働状況を確認し、『店舗運営管理記録表』に記入している"}, {"code": "07-02-02-3", "text": "設備・機器が基準を満たしていない場合、ストアマネジャーに報告している"}, {"code": "07-02-02-4", "text": "オープン前に来店されたお客様への対応を理解している"}, {"code": "07-02-02-5", "text": "クロージング作業に不備があった場合、ストアマネジャーに報告している"}]}]}]}, {"code": "08", "name": "クロージング", "chapters": [{"code": "08-01", "name": "1 緊急連絡", "basicMaxPt": 4, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 関係者とフォロー体制", "viewpoints": [{"code": "08-01-01-1", "text": "どのような状況時に電話連絡するのか理解している"}, {"code": "08-01-01-2", "text": "『緊急時の初期対応・連絡先一覧』の掲示場所を知っている"}, {"code": "08-01-01-3", "text": "連絡先の優先順位を理解している"}]}]}, {"code": "08-02", "name": "2 お客様対応", "basicMaxPt": 10, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 クロージング時のお客様対応", "viewpoints": [{"code": "08-02-01-1", "text": "在店中のお客様に対し、手順通りラストオーダーの確認を行っている"}, {"code": "08-02-01-2", "text": "ラストオーダー時刻以前にラストオーダー確認を行っていない"}, {"code": "08-02-01-3", "text": "ドリンクバーご利用中のお客様には利用終了時刻の説明を行っている"}, {"code": "08-02-01-4", "text": "ラストオーダーぎりぎりにご来店されたお客様をこころよくお迎えしている"}, {"code": "08-02-01-5", "text": "閉店時刻を過ぎたお客様に対して適切なタイミングでお声がけをしている"}]}]}, {"code": "08-03", "name": "3 実務", "basicMaxPt": 36, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 クロージング作業", "viewpoints": [{"code": "08-03-01-1", "text": "プレクロージング・クロージング作業を漏れなく実施している"}, {"code": "08-03-01-2", "text": "店内に食材カス・水たまり・ゴミがない状態でクロージング作業を終了している"}, {"code": "08-03-01-3", "text": "キッチンの設備・機器の電源をOFFにしている"}, {"code": "08-03-01-4", "text": "ガスの元栓と遮断弁を閉じている"}, {"code": "08-03-01-5", "text": "食材を冷蔵庫に収納し、コールドパンのフタを閉めている"}, {"code": "08-03-01-6", "text": "ロスの記録と入力を手順通り実施している"}, {"code": "08-03-01-7", "text": "店内・トイレにお客様がいないことを確認し、店舗入口の鍵を閉めている"}, {"code": "08-03-01-8", "text": "勤怠データ確定を手順通り実施している"}, {"code": "08-03-01-9", "text": "レジ精算を手順通り実施している"}, {"code": "08-03-01-10", "text": "セーフティボックスを開けたままその場から離れていない"}, {"code": "08-03-01-11", "text": "売上金の回収作業を手順通り実施している"}, {"code": "08-03-01-12", "text": "『オーダー端末』『勤怠端末』『業務端末』を充電し、所定の場所に保管している"}, {"code": "08-03-01-13", "text": "各種レポートを『稼働計画表』にルール通り貼付けている"}]}, {"name": "2 退店時管理", "viewpoints": [{"code": "08-03-02-1", "text": "『店舗運営管理記録表』の閉店時項目を確認し、記入している"}, {"code": "08-03-02-2", "text": "『責任者キー』をドロアー内に入れてドロアーを閉めている"}, {"code": "08-03-02-3", "text": "無断駐車車両がいる場合に手順通り対応している"}, {"code": "08-03-02-4", "text": "勤務終了から10分以内に複数人数で退出している"}, {"code": "08-03-02-5", "text": "警備セット・バックヤード施錠を手順通り実施している"}]}]}]}, {"code": "09", "name": "コントロール", "chapters": [{"code": "09-01", "name": "1 原則", "basicMaxPt": 10, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 コントロールの原則", "viewpoints": [{"code": "09-01-01-1", "text": "作業割当変更・作業指示を行うために必要な情報を収集している"}, {"code": "09-01-01-2", "text": "どのような状況時に作業割当の変更を行うのか理解している"}, {"code": "09-01-01-3", "text": "作業割当変更の原則を理解している"}, {"code": "09-01-01-4", "text": "3W2Hで作業割当の変更命令を出している"}, {"code": "09-01-01-5", "text": "作業指示の原則を理解している"}]}]}, {"code": "09-02", "name": "2 準備", "basicMaxPt": 10, "advanceMaxPt": 0, "hasAdvance": false, "sections": [{"name": "1 事前準備", "viewpoints": [{"code": "09-02-01-1", "text": "時間帯別の必須作業と完了予定時刻をストアマネジャーに事前に確認している"}, {"code": "09-02-01-2", "text": "当日の「トレーニング計画」をストアマネジャーに事前に確認している"}, {"code": "09-02-01-3", "text": "当日の「週課/月課の清掃・メンテナンス計画」を事前に確認している"}, {"code": "09-02-01-4", "text": "当日の「早出・延長依頼」の基準をストアマネジャーに事前に確認している"}]}]}, {"code": "09-03", "name": "3 実務", "basicMaxPt": 30, "advanceMaxPt": 30, "hasAdvance": true, "sections": [{"name": "1 ピーク前準備", "viewpoints": [{"code": "09-03-01-1", "text": "ピーク前準備の進行状況を確認している"}, {"code": "09-03-01-2", "text": "準備が遅れている場合に、作業割当の変更、もしくは作業指示を行っている"}, {"code": "09-03-01-3", "text": "ピーク売上が計画から大きく外れた時の対応を事前にシミュレーションしている"}]}, {"name": "2 ピーク時間帯", "viewpoints": [{"code": "09-03-02-1", "text": "ピークに入ることを全従業員に伝え、ピーク時間帯の作業割当に変更している"}, {"code": "09-03-02-2", "text": "流れが停滞しているところに入る、もしくは一時的に作業割当を変更している"}, {"code": "09-03-02-3", "text": "提供時間の遅れを見て、キッチンを支援する一時的な作業割当変更を行える"}, {"code": "09-03-02-4", "text": "ソート周辺、カウンター周辺を整理整頓し、ムダな停滞を減らしている"}, {"code": "09-03-02-5", "text": "クリーンアップの徹底と、手ぶらでカウンターに戻らないことを指示している"}, {"code": "09-03-02-6", "text": "状況に応じてフロア↔キッチン間の作業割当を変更している"}, {"code": "09-03-02-7", "text": "ピークの売上が計画を大きく下回った場合にトレーニングを進めることができる"}]}, {"name": "3 ピーク終了後", "viewpoints": [{"code": "09-03-03-1", "text": "先に客席がおおむね整っていることを確認してから片付け作業に入っている"}, {"code": "09-03-03-2", "text": "次のピーク(クローズ)までに行う作業を確認している"}, {"code": "09-03-03-3", "text": "片付け作業を整理し、作業割当を変更している"}, {"code": "09-03-03-4", "text": "大量に洗い物がある場合、必要な食器から洗うように作業指示を出している"}, {"code": "09-03-03-5", "text": "ピークまたはクローズに間に合うようにキッチンの作業割当を変更している"}, {"code": "09-03-03-6", "text": "作業割当を変更して日課・週課・月課のメンテナンスを行っている"}]}]}]}, {"code": "10", "name": "スウィング", "chapters": [{"code": "10-01", "name": "1 緊急連絡", "basicMaxPt": 0, "advanceMaxPt": 4, "hasAdvance": true, "sections": [{"name": "1 関係者とフォロー体制", "viewpoints": [{"code": "10-01-01-1", "text": "どのような状況時に電話連絡するのか理解している"}, {"code": "10-01-01-2", "text": "『緊急時の初期対応・連絡先一覧』の掲示場所を知っている"}, {"code": "10-01-01-3", "text": "連絡先の優先順位を理解している"}]}]}, {"code": "10-02", "name": "2 労務管理", "basicMaxPt": 0, "advanceMaxPt": 6, "hasAdvance": true, "sections": [{"name": "1 就業ルール", "viewpoints": [{"code": "10-02-01-1", "text": "勤務前チェックを手順通り実施している"}, {"code": "10-02-01-2", "text": "身だしなみが基準に満たない場合に、適切に指導している"}, {"code": "10-02-01-3", "text": "発熱・下痢・嘔吐の症状がある人を、直接食品を取り扱う作業につかせていない"}, {"code": "10-02-01-4", "text": "勤務後チェックを手順通り実施している"}]}, {"name": "2 勤怠管理", "viewpoints": [{"code": "10-02-02-1", "text": "クルーの勤務実績に誤りが発生したときに正しい手順でデータ修正ができる"}, {"code": "10-02-02-2", "text": "クルーの欠勤や遅刻が判明した時に速やかにマネジャーに相談している"}]}]}, {"code": "10-03", "name": "3 商品管理", "basicMaxPt": 0, "advanceMaxPt": 20, "hasAdvance": true, "sections": [{"name": "1 提供トラブル", "viewpoints": [{"code": "10-03-01-1", "text": "提供遅れ、手直し、作り直し、廃棄の対応を状況に応じて行っている"}, {"code": "10-03-01-2", "text": "責任者以外に対応させていない"}, {"code": "10-03-01-3", "text": "一度誤って他のテーブルに提供したものを回収して再提供していない"}]}, {"name": "2 異物混入", "viewpoints": [{"code": "10-03-02-1", "text": "異物混入発生時の対応手順を理解している"}, {"code": "10-03-02-2", "text": "商品異常報告時の対応手順を理解している"}, {"code": "10-03-02-3", "text": "商品異常報告時の禁止事項を理解している"}]}]}, {"code": "10-04", "name": "4 お客様からの問合せ対応①", "basicMaxPt": 0, "advanceMaxPt": 20, "hasAdvance": true, "sections": [{"name": "1 リクエスト・要望への対応", "viewpoints": [{"code": "10-04-01-1", "text": "店舗状況を考慮した上で、できる限りお客様の要望に沿った対応を行っている"}, {"code": "10-04-01-2", "text": "要望を完全に満たせない場合、丁寧に事情を説明している"}]}, {"name": "2 アレルゲン対応", "viewpoints": [{"code": "10-04-02-1", "text": "お客様からアレルゲンの問合せを受けた場合の対応を手順通り実施している"}, {"code": "10-04-02-2", "text": "いかなる問い合わせにも口頭で答えていない"}]}, {"name": "3 忘れ物対応", "viewpoints": [{"code": "10-04-03-1", "text": "発見日当日の対応を手順通り実施している"}, {"code": "10-04-03-2", "text": "貴重品に該当するものを理解している"}, {"code": "10-04-03-3", "text": "忘れ物の携帯電話や電子機器を操作していない"}, {"code": "10-04-03-4", "text": "保管場所以外の場所に放置していない(特にお客様から見えるレジ周辺)"}, {"code": "10-04-03-5", "text": "問合せがあった場合の対応を手順通り実施している"}, {"code": "10-04-03-6", "text": "返却日当日の対応を手順通り実施している"}, {"code": "10-04-03-7", "text": "お客様の素性が確認できない状況で忘れ物を返却していない"}, {"code": "10-04-03-8", "text": "返却対応を責任者以外に対応させていない"}]}]}, {"code": "10-05", "name": "5 資産の保全①", "basicMaxPt": 0, "advanceMaxPt": 10, "hasAdvance": true, "sections": [{"name": "1 コンディションラウンド", "viewpoints": [{"code": "10-05-01-1", "text": "店外・店内を点検し、清潔で安全な環境を維持している"}, {"code": "10-05-01-2", "text": "気になるお客様には声かけし、必要に応じて他の従業員に共有している"}]}, {"name": "2 店舗衛生管理", "viewpoints": [{"code": "10-05-02-1", "text": "フロアダスター・スプレーボトルの取扱いルールをクルーにも徹底させている"}, {"code": "10-05-02-2", "text": "定時に『キッチンダスター』の交換を行い、『店舗運営管理記録表』に記入している"}]}, {"name": "3 在庫・ロス管理", "viewpoints": [{"code": "10-05-03-1", "text": "食材の変動が少ない時間帯に棚卸を実施している"}, {"code": "10-05-03-2", "text": "納品済みの荷物がある場合、荷物を片付けてから棚卸を実施している"}, {"code": "10-05-03-3", "text": "棚卸を手順どおり実施している"}, {"code": "10-05-03-4", "text": "ロスの記録と入力を手順通り実施している"}]}, {"name": "4 現金管理", "viewpoints": [{"code": "10-05-04-1", "text": "VOID処理が発生した場合、必ずお詫びしたうえで対応している"}, {"code": "10-05-04-2", "text": "VOID処理を責任者以外に対応させていない"}, {"code": "10-05-04-3", "text": "VOIDの前提条件(電子マネー、クレジット利用時)を理解している"}, {"code": "10-05-04-4", "text": "現金・電子マネー・クレジット利用時のVOID処理を手順通り実施している"}, {"code": "10-05-04-5", "text": "電子マネー・クレジット利用時でVOID処理ができない場合でも対応できる"}, {"code": "10-05-04-6", "text": "未収データクリアを手順通り実施している"}, {"code": "10-05-04-7", "text": "会計明細の修正・削除を手順通り実施している"}]}]}, {"code": "10-06", "name": "6 お客様からの問合せ対応②", "basicMaxPt": 0, "advanceMaxPt": 10, "hasAdvance": true, "sections": [{"name": "1 店内トラブル対応", "viewpoints": [{"code": "10-06-01-1", "text": "苦情対応の基本姿勢を理解している"}, {"code": "10-06-01-2", "text": "苦情の大きさに関係なく必ず責任者が対応することを理解している"}, {"code": "10-06-01-3", "text": "その場で解決しない場合などは、当日勤務の社員に連絡することを理解している"}, {"code": "10-06-01-4", "text": "ストアマネジャーに報告する3項目を理解している"}, {"code": "10-06-01-5", "text": "苦情対応時の禁止事項を理解している"}, {"code": "10-06-01-6", "text": "汚損事故発生時の対応手順を理解している"}, {"code": "10-06-01-7", "text": "出血や火傷している場合の対応手順を理解している"}, {"code": "10-06-01-8", "text": "転倒事故の場合の対応手順を理解している"}, {"code": "10-06-01-9", "text": "体調不良の問合わせを受けた場合の対応手順・禁止事項を理解している"}, {"code": "10-06-01-10", "text": "悪戯への対応手順を理解している"}, {"code": "10-06-01-11", "text": "営業活動などが主目的であるお客様への対応手順を理解している"}, {"code": "10-06-01-12", "text": "泥酔したお客様への対応手順を理解している"}, {"code": "10-06-01-13", "text": "お客様同士のケンカへの対応手順を理解している"}, {"code": "10-06-01-14", "text": "お客様の容姿・年齢・性別によって言葉づかいや態度を変えていない"}]}, {"name": "2 物損・駐車場トラブル対応", "viewpoints": [{"code": "10-06-02-1", "text": "物損事故発生時の対応を理解している"}, {"code": "10-06-02-2", "text": "お客様の車の傷・破損への対応手順を理解している"}, {"code": "10-06-02-3", "text": "車上荒らし・窃盗への対応手順を理解している"}, {"code": "10-06-02-4", "text": "お客様同士の事故への対応手順を理解している"}, {"code": "10-06-02-5", "text": "当て逃げ事故への対応手順を理解している"}, {"code": "10-06-02-6", "text": "駐車場内での転倒事故への対応手順を理解している"}, {"code": "10-06-02-7", "text": "自損事故発生時の対応手順を理解している"}]}, {"name": "3 その他お客様対応", "viewpoints": [{"code": "10-06-03-1", "text": "援助や配慮が必要と思われる方への対応を手順通り実施している"}, {"code": "10-06-03-2", "text": "視覚障がい者への対応を手順通り実施している"}, {"code": "10-06-03-3", "text": "思い込みで行動していない"}]}]}, {"code": "10-07", "name": "7 資産の保全②", "basicMaxPt": 0, "advanceMaxPt": 10, "hasAdvance": true, "sections": [{"name": "1 店舗衛生管理", "viewpoints": [{"code": "10-07-01-1", "text": "吐しゃ物処理の手順通り実施している"}, {"code": "10-07-01-2", "text": "吐しゃ物処理で使用したエプロン・マスクの廃棄後の手順を正しく理解している"}, {"code": "10-07-01-3", "text": "リースマットが吐しゃ物で汚れた場合の対応を手順通り実施している"}, {"code": "10-07-01-4", "text": "吐しゃ物処理対応中にiPadに触れていない"}]}, {"name": "2 店舗資産管理", "viewpoints": [{"code": "10-07-02-1", "text": "IT機器に該当するものを理解している"}, {"code": "10-07-02-2", "text": "IT機器の通信障害時や故障・破損の問合せを行う場合の対応手順を理解している"}]}, {"name": "3 現金管理", "viewpoints": [{"code": "10-07-03-1", "text": "自動釣銭機に詰まりが発生した場合に詰まり解消を行っている"}, {"code": "10-07-03-2", "text": "レジ・自動釣銭機の故障判明時の対応手順を理解している"}, {"code": "10-07-03-3", "text": "自動釣銭機停止時の会計を手順通り実施できる"}, {"code": "10-07-03-4", "text": "レジ本体停止時の会計を手順通り実施できる"}, {"code": "10-07-03-5", "text": "停電などで食事途中のお客様が退店される場合の対応手順を理解している"}, {"code": "10-07-03-6", "text": "レジ停止時の禁止事項を理解している"}]}, {"name": "4 店舗設備不良", "viewpoints": [{"code": "10-07-04-1", "text": "ドリンクバー機器の故障時の対応手順を理解している"}, {"code": "10-07-04-2", "text": "ドリンクバーの値段を下げて販売してはいけないことを理解している"}]}]}, {"code": "10-08", "name": "8 緊急事態対応", "basicMaxPt": 0, "advanceMaxPt": 10, "hasAdvance": true, "sections": [{"name": "1 危機対応の原則", "viewpoints": [{"code": "10-08-01-1", "text": "被害発生時の行動原則を理解している"}, {"code": "10-08-01-2", "text": "災害発生時の第一報の対応手順を理解している"}, {"code": "10-08-01-3", "text": "怪我人がいる場合の対応手順を理解している"}]}, {"name": "2 自然災害・火災", "viewpoints": [{"code": "10-08-02-1", "text": "地震発生時の対応手順を理解している"}, {"code": "10-08-02-2", "text": "自店舗で火災が発生した場合の対応手順を理解している"}, {"code": "10-08-02-3", "text": "店舗の近隣で火災が発生した場合の対応手順を理解している"}]}, {"name": "3 ライフライン停止等", "viewpoints": [{"code": "10-08-03-1", "text": "突発的な停電発生時の対応手順を理解している"}, {"code": "10-08-03-2", "text": "ガス停止時やガス臭がする場合の対応手順を理解している"}, {"code": "10-08-03-3", "text": "断水発生時の対応手順を理解している"}, {"code": "10-08-03-4", "text": "漏水発生時の対応原則・手順を理解している"}]}, {"name": "4 犯罪発生時対応", "viewpoints": [{"code": "10-08-04-1", "text": "強盗発生時の対応手順・禁止事項を理解している"}, {"code": "10-08-04-2", "text": "侵入犯への対応手順を理解している"}, {"code": "10-08-04-3", "text": "店外から店舗設備の破損が確認できる場合の禁止事項を理解している"}, {"code": "10-08-04-4", "text": "売上窃盗への対応手順を理解している"}, {"code": "10-08-04-5", "text": "無銭飲食(食い逃げ)への対応手順・禁止事項を理解している"}, {"code": "10-08-04-6", "text": "業者訪問時の対応手順・禁止事項を理解している"}]}, {"name": "5 防犯対策", "viewpoints": [{"code": "10-08-05-1", "text": "偽造紙幣・偽造硬貨を発見した場合の対応手順を理解している"}, {"code": "10-08-05-2", "text": "一万円への逆両替をしていない"}]}, {"name": "6 特殊客対応", "viewpoints": [{"code": "10-08-06-1", "text": "過度な要求への対応を理解している"}, {"code": "10-08-06-2", "text": "暴力団・暴走族等の反社会的勢力への対応手順を理解している"}, {"code": "10-08-06-3", "text": "嫌がらせ・迷惑行為への対応手順を理解している"}]}]}]}]};
+const ROSTER = [{"code": "9001", "name": "テスト　太郎", "grade": "", "rank": 9, "position": "ｽﾄｱﾁｰﾌ", "isStaff": true, "isOwnStore": true, "active": true, "hiredOn": "2016-04-01"}, {"code": "T0002", "name": "テスト　二郎", "grade": "LD3", "rank": 4, "position": "", "isStaff": false, "isOwnStore": true, "active": true, "hiredOn": "2022-07-16"}, {"code": "T0003", "name": "テスト　三子", "grade": "LD1", "rank": 2, "position": "", "isStaff": false, "isOwnStore": true, "active": true, "hiredOn": "2025-12-03"}, {"code": "T0004", "name": "テスト　四郎", "grade": "T", "rank": 1, "position": "", "isStaff": false, "isOwnStore": true, "active": true, "hiredOn": "2026-06-20"}, {"code": "T0005", "name": "テスト　五美", "grade": "PT1", "rank": 8, "position": "", "isStaff": false, "isOwnStore": false, "active": true, "hiredOn": "2019-09-01"}];
+const STORE  = {code:"9999", name:"テスト店"};
+
+/* 観点の状態: 0=未着手 1=セルフ済(トレーナー確認待ち) 2=トレーナー確認済
+   マネージャー承認は観点ではなく「章」に対して行う(MGR_APPROVAL参照)。 */
+const STAGE_LABEL = ["未着手", "セルフ済", "T確認済"];
+const STAGE_MAX = 2;
+
+/* 格付けマスタ。章を全部確定させると、その章の満点がまとめて入る(章単位加算)。
+   満点は Basic 430 + Advance 560 = 990点。 */
+/* 格付けマスタにはPT3(880点)の定義もあるが、現在は運用されていないため
+   PT2を最上位として扱う(店長確認済み)。復活したら1行足せばよい。 */
+const GRADES = [[0,"TRY"],[60,"LD1"],[180,"LD2"],[360,"LD3"],[480,"AS1"],
+                [560,"AS2"],[640,"AS3"],[720,"PT1"],[800,"PT2"]];
+const MAX_PT = 990;
+
+/* ---- 索引をあらかじめ作る(532観点を毎回走査しないため) ---- */
+const CHAPTERS = [];                 // 全章
+const VP_OF_CH = new Map();          // 章コード -> 観点コード配列
+const VP_OF_BU = new Map();          // 部コード -> 観点コード配列
+MASTER.bu.forEach(bu => {
+  const buCodes = [];
+  bu.chapters.forEach(ch => {
+    ch.buCode = bu.code; ch.buName = bu.name;
+    CHAPTERS.push(ch);
+    const codes = ch.sections.flatMap(s => s.viewpoints.map(v => v.code));
+    VP_OF_CH.set(ch.code, codes);
+    buCodes.push(...codes);
+  });
+  VP_OF_BU.set(bu.code, buCodes);
+});
+const CH_BY_CODE = new Map(CHAPTERS.map(c => [c.code, c]));
+
+/* ---- 保存: 端末に残す。使えない環境ではメモリ上だけで動かす ---- */
+const Store = (() => {
+  const KEY = "salute:" + STORE.code;
+  let mem = null;
+  function read(){
+    if (mem) return mem;
+    try { mem = JSON.parse(localStorage.getItem(KEY)) || {}; }
+    catch (e) { mem = {}; }
+    return mem;
+  }
+  function write(){
+    try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {}
+  }
+  return {
+    get: read,
+    /* 章ごとのマネージャー承認。{code: {章コード: {basic:{d,by}, advance:{d,by}}}}
+       観点の状態とは別に持つ。点数が入るのはここが埋まった時点。 */
+    approval(code, ch, level, rec){
+      const d = read();
+      const all = d.__mgr || (d.__mgr = {});
+      const person = all[code] || (all[code] = {});
+      if (rec === undefined) return person[ch]?.[level] || null;
+      const e = person[ch] || (person[ch] = {});
+      if (rec === null) delete e[level]; else e[level] = rec;
+      if (!Object.keys(e).length) delete person[ch];
+      write();
+    },
+    /* 名簿への追記・変更。CSV取り込みで消えないよう、別のキーに持つ。 */
+    crewPatch(code, patch){
+      const d = read();
+      const all = d.__crew || (d.__crew = {});
+      if (patch === undefined) return all[code] || null;
+      all[code] = Object.assign({}, all[code], patch);
+      write();
+    },
+    crewPatches(){ return read().__crew || {}; },
+    lastCrew(v){
+      const d = read();
+      if (v === undefined) return d.__last || null;
+      d.__last = v; write();
+    },
+    set(code, vp, level, stage, date, sendBack, by){
+      const d = read();
+      const person = d[code] || (d[code] = {});
+      const entry = person[vp] || (person[vp] = {});
+      const prev = entry[level] || {};
+      if (stage === 0 && !sendBack) { delete entry[level]; }
+      else {
+        entry[level] = {s: stage, d: date || null};
+        /* 承認者は段階ごとに残す。t=トレーナー承認者, m=マネージャー承認者。
+           前の段階で記録した承認者は、進んでも消さない。 */
+        if (prev.t) entry[level].t = prev.t;
+        if (prev.m) entry[level].m = prev.m;
+        if (by && stage === 2) entry[level].t = by;
+        if (by && stage === 3) entry[level].m = by;
+        /* 差し戻しは「誰かが判断して戻した」という事実。日付と理由を残す。
+           次にその段階へ進めた時点で消える(対応済みとみなす)。 */
+        if (sendBack) entry[level].b = {d: sendBack.date, r: sendBack.reason || "",
+                                        by: sendBack.by || null};
+      }
+      if (!Object.keys(entry).length) delete person[vp];
+      write();
+    }
+  };
+})();
+
+function stageOf(code, vp, level){
+  if (code === "__last" || code === "__crew" || code === "__mgr") return 0;
+  const e = Store.get()[code]?.[vp]?.[level];
+  return e ? e.s : 0;
+}
+function doneDate(code, vp, level){
+  return Store.get()[code]?.[vp]?.[level]?.d || null;
+}
+/* 差し戻しの記録。{d:日付, r:理由, by:差し戻した人} */
+function sentBack(code, vp, level){
+  return Store.get()[code]?.[vp]?.[level]?.b || null;
+}
+/* 承認者。kind は "t"(トレーナー) か "m"(マネージャー) */
+function approver(code, vp, level, kind){
+  return Store.get()[code]?.[vp]?.[level]?.[kind] || null;
+}
+
+/* その段階を承認できる人。
+   トレーナー承認は「格付が2つ上以上」、マネージャー承認は社員のみ。
+   後追い入力もあるので、出勤しているかどうかでは絞らない。 */
+function approversFor(crew, toStage){
+  const list = allCrew().filter(c => c.active !== false && c.code !== crew.code);
+  if (toStage === 3) return list.filter(c => c.isStaff);
+  return list.filter(c => c.isStaff || (c.rank && crew.rank && c.rank >= crew.rank + 2));
+}
+
+/* 直前に選んだ承認者を覚えておき、次の候補の先頭に出す。
+   同じ人が続けて承認することが多いので、選ぶ手間がほぼ無くなる。 */
+/* crewPatch は「オブジェクトを重ねる」入れ物なので、文字列をそのまま渡すと
+   1文字ずつに分解されて入る({0:"R",1:"E"…})。必ず {v: コード} で包む。
+   古い形(文字列を分解したもの)が残っていても v が無いので null になる。 */
+function recentApprover(kind){
+  const r = Store.crewPatch("__recent" + kind);
+  return r && typeof r.v === "string" ? r.v : null;
+}
+function rememberApprover(kind, code){ Store.crewPatch("__recent" + kind, {v: code}); }
+/* 端末の日付。toISOString はUTCに直してしまうため、日本時間の朝9時より前は
+   前日の日付が入ってしまう。承認日は紙に書き写す値なので、必ず現地日付で作る。 */
+function isoOf(d){
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function today(){ return isoOf(new Date()); }
+
+/* その人が最後に何かを確定した日。クルー一覧で「動いているか」を見るために使う。 */
+function lastTrainedOn(code){
+  /* 観点の記録が1つも無くても、章の承認だけ入っていることがある
+     (一括入力や取り込みで章から入った場合)。両方を見る。 */
+  const person = Store.get()[code] || {};
+  let latest = null;
+  for (const vp of Object.keys(person)){
+    for (const lv of ["basic","advance"]){
+      const d = person[vp]?.[lv]?.d;
+      if (d && (!latest || d > latest)) latest = d;
+    }
+  }
+  const mgr = (Store.get().__mgr || {})[code] || {};
+  for (const ch of Object.keys(mgr)){
+    for (const lv of ["basic","advance"]){
+      const d = mgr[ch]?.[lv]?.d;
+      if (d && (!latest || d > latest)) latest = d;
+    }
+  }
+  return latest;
+}
+/* 今日から何日前か。日付は端末の時計を基準にする。 */
+function daysSince(iso){
+  const ms = new Date(today()) - new Date(iso);
+  return Math.round(ms / 86400000);
+}
+
+/* その人の承認待ち。chToDo にはマネージャー承認できる章を積む。 */
+function pendingOf(code, opt){
+  const crew = typeof code === "object" ? code : findCrew(code);
+  const id = crew ? crew.code : code;
+  let trainer = 0;
+  const mgr = [], tr = [];
+  for (const bu of MASTER.bu){
+    for (const ch of bu.chapters){
+      for (const lv of (ch.hasAdvance ? ["basic","advance"] : ["basic"])){
+        if (isChApproved(id, ch.code, lv)) continue;
+        if (lv === "advance" && !isChApproved(id, ch.code, "basic")) continue;
+        const vps = VP_OF_CH.get(ch.code);
+        const self = vps.filter(v => stageOf(id, v, lv) === 1).length;
+        const pt = lv === "basic" ? (ch.basicMaxPt||0) : (ch.advanceMaxPt||0);
+        trainer += self;
+        /* トレーナー確認待ちも章単位でまとめる。作業は章ごとに進むため。 */
+        if (self) tr.push({bu, ch, lv, pt, left: self});
+        if (vps.every(v => stageOf(id, v, lv) >= STAGE_MAX)) mgr.push({bu, ch, lv, pt});
+      }
+    }
+  }
+  /* 残りが少ない章を上に。早く片付くものから手をつけられる */
+  tr.sort((a, b) => a.left - b.left);
+  return {trainer, mgr, tr, mgrPt: mgr.reduce((s2, m) => s2 + m.pt, 0)};
+}
+
+/* 章のマネージャー承認 */
+function chApproval(code, chCode, level){ return Store.approval(code, chCode, level); }
+function isChApproved(code, chCode, level){ return !!chApproval(code, chCode, level); }
+
+/* その章のその水準が、マネージャー承認を出せる状態か。
+   配下の観点がすべてトレーナー確認済(状態2)になっていることが条件。 */
+function readyForMgr(code, ch, level){
+  if (level === "advance" && !ch.hasAdvance) return false;
+  if (level === "advance" && !isChApproved(code, ch.code, "basic")) return false;
+  if (isChApproved(code, ch.code, level)) return false;
+  return VP_OF_CH.get(ch.code).every(v => stageOf(code, v, level) >= STAGE_MAX);
+}
+
+/* 確定した観点の数。章にAdvanceがある場合はBasic/Advanceの両方を1件ずつ数える */
+function doneCount(code, vpCodes){
+  let done = 0, total = 0;
+  for (const vp of vpCodes){
+    const ch = CH_BY_CODE.get(vp.slice(0,5));
+    const levels = ch && ch.hasAdvance ? ["basic","advance"] : ["basic"];
+    for (const lv of levels){
+      total++;
+      if (stageOf(code, vp, lv) >= STAGE_MAX) done++;
+    }
+  }
+  return {done, total};
+}
+
+/* 獲得ポイント。章の観点が「全部」確定して初めて、その章の満点が入る。
+   途中では1点も入らない代わりに、最後の1つを確定した瞬間にまとめて動く。 */
+function pointsOf(code){
+  let pt = 0;
+  for (const ch of CHAPTERS){
+    if (isChApproved(code, ch.code, "basic")) pt += ch.basicMaxPt || 0;
+    if (ch.hasAdvance && isChApproved(code, ch.code, "advance")) pt += ch.advanceMaxPt || 0;
+  }
+  return pt;
+}
+/* いまの格付と、次の格付までの残り */
+function gradeAt(pt){
+  let cur = GRADES[0], next = null;
+  for (let i = 0; i < GRADES.length; i++){
+    if (pt >= GRADES[i][0]) { cur = GRADES[i]; next = GRADES[i+1] || null; }
+  }
+  return {grade: cur[1], base: cur[0], next: next ? next[1] : null,
+          nextAt: next ? next[0] : null};
+}
+/* その章で既に獲得しているポイント */
+function chapterEarned(code, ch){
+  let pt = 0;
+  if (isChApproved(code, ch.code, "basic")) pt += ch.basicMaxPt || 0;
+  if (ch.hasAdvance && isChApproved(code, ch.code, "advance")) pt += ch.advanceMaxPt || 0;
+  return pt;
+}
+
+/* その章で、あと何項目確定すれば点が入るか */
+function chapterPending(code, ch){
+  const vps = VP_OF_CH.get(ch.code);
+  const b = isChApproved(code, ch.code, "basic")
+    ? 0 : vps.filter(v => stageOf(code, v, "basic") < STAGE_MAX).length;
+  const a = !ch.hasAdvance || isChApproved(code, ch.code, "advance")
+    ? 0 : vps.filter(v => stageOf(code, v, "advance") < STAGE_MAX).length;
+  return {basicLeft: b, advanceLeft: a};
+}
+
+/* ---- 画面の状態 ---- */
+/* 入口はクルー本人の画面。前回開いた人を覚えておき、次もそこから始める。
+   店長が全員を見るための名簿は「切り替え」から入る位置に下げる。 */
+const LAST = Store.lastCrew();
+const LAST_CREW = LAST ? (ROSTER.find(c => c.code === LAST) || null) : null;
+let view = LAST_CREW ? {name:"home", crew:LAST_CREW} : {name:"crew"};
+const $main = document.getElementById("main");
+
+function setHeader(eyebrow, title, count, canBack){
+  document.getElementById("eyebrow").textContent = eyebrow || "";
+  document.getElementById("title").textContent = title;
+  document.getElementById("count").textContent = count || "";
+  document.getElementById("back").hidden = !canBack;
+  document.getElementById("mark").hidden = !!canBack;
+  document.getElementById("acts").innerHTML = "";
+}
+/* 見出し右のアイコン。setHeader のあとに呼ぶ(setHeaderが消すため)。 */
+const ICON_EXPORT =
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+  + ' stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">'
+  + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>'
+  + '<path d="M7 9l5-5 5 5"/><path d="M12 4v11"/></svg>';
+const ICON_TUNE =
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+  + ' stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">'
+  + '<path d="M4 21v-6"/><path d="M4 11V3"/><path d="M12 21v-9"/><path d="M12 8V3"/>'
+  + '<path d="M20 21v-4"/><path d="M20 13V3"/><path d="M1 15h6"/><path d="M9 8h6"/>'
+  + '<path d="M17 17h6"/></svg>';
+function headerAction(label, svg, onClick){
+  const b = el("button");
+  b.setAttribute("aria-label", label);
+  b.innerHTML = svg;
+  b.onclick = onClick;
+  document.getElementById("acts").appendChild(b);
+  return b;
+}
+
+function el(tag, cls, text){
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+function chevron(){
+  const s = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  s.setAttribute("class","chev"); s.setAttribute("width","18");
+  s.setAttribute("height","18"); s.setAttribute("viewBox","0 0 24 24");
+  s.innerHTML = '<path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" '+
+                'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+  return s;
+}
+/* 「◯pt」の表示。earned が真なら緑(もう入っている)、偽なら灰(まだ入らない)。
+   max を渡すと「獲得/満点」になり、分子を大きく、分母を小さく添える。 */
+function ptsTag(pt, earned, max){
+  const w = el("span","pts");
+  w.appendChild(el("em", earned ? "on" : null, String(pt)));
+  if (max != null) w.appendChild(el("s", null, "/" + max));
+  w.appendChild(el("i", earned ? "on" : null, "pt"));
+  return w;
+}
+
+function meter(done, total){
+  const m = el("div","meter");
+  const t = el("div","track");
+  const f = el("div","fill");
+  f.style.width = (total ? done/total*100 : 0) + "%";
+  t.appendChild(f); m.appendChild(t);
+  m.appendChild(el("span","frac", done + "/" + total));
+  return m;
+}
+
+/* ---- ① クルー一覧 ---- */
+let crewQuery = "";
+let showRetired = false;
+/* 一括入力モード。オンの間は、1タップでセルフ〜マネージャー承認までまとめて記録する。
+   承認者は最初に1回だけ選び、以降その人として記録する。 */
+let bulk = null;   // {trainer, manager} いずれも従業員コード
+
+/* 表示に使う名簿。CSVで取り込んだROSTERに、端末側の追記(新規・退職・格付変更)を重ねる。
+   CSVを入れ直しても端末側の変更が消えないよう、保存は別のキーに分けている。 */
+function allCrew(){
+  const patches = Store.crewPatches();
+  const list = ROSTER.map(c => Object.assign({}, c, patches[c.code] || {}));
+  const known = new Set(ROSTER.map(c => c.code));
+  for (const [code, p] of Object.entries(patches)){
+    /* __recentt・__period など、名簿ではない覚え書きは同じ入れ物に入っている。
+       これを弾かないと、氏名のない行が一覧と承認者の候補に出てしまう。 */
+    if (code.startsWith("__")) continue;
+    if (!known.has(code)) list.push(Object.assign({code, active: true}, p));
+  }
+  return list;
+}
+function findCrew(code){ return allCrew().find(c => c.code === code) || null; }
+
+/* 氏名・従業員コード・格付のどれでも引っかかるようにする。
+   氏名は姓と名の間の空白(全角・半角)を無視して比べる。 */
+function matchCrew(c, q){
+  if (!q) return true;
+  const norm = t => String(t || "").replace(/[\s\u3000]/g, "").toLowerCase();
+  const key = norm(c.name) + norm(c.code) + norm(c.grade) + norm(c.position);
+  return key.includes(norm(q));
+}
+
+/* 検索欄は作り直さない。作り直すとIMEの変換が壊れる(「た」→「たた」)。
+   一度だけ作って使い回し、絞り込みの結果はリスト側だけを描き替える。 */
+let searchEl = null, searchInput = null, listEl = null, composing = false;
+
+function buildSearch(){
+  const wrap = el("div","search");
+  const box = el("div","box");
+  box.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" '+
+    'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '+
+    'stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
+  const input = document.createElement("input");
+  input.type = "text";
+  input.autocapitalize = "off";
+  input.autocomplete = "off";
+  input.placeholder = "氏名・従業員コード・格付で探す";
+  /* 変換中は絞り込みを止める。確定した時点で1回だけ走らせる。 */
+  input.addEventListener("compositionstart", () => { composing = true; });
+  input.addEventListener("compositionend", () => {
+    composing = false;
+    crewQuery = input.value;
+    renderCrewList();
+  });
+  input.addEventListener("input", () => {
+    if (composing) return;
+    crewQuery = input.value;
+    renderCrewList();
+  });
+  box.appendChild(input);
+
+  const clr = el("button","clear");
+  clr.setAttribute("aria-label","検索をやめる");
+  clr.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" '+
+    'stroke="currentColor" stroke-width="2.4" stroke-linecap="round">'+
+    '<path d="M6 6l12 12M18 6L6 18"/></svg>';
+  clr.onclick = () => {
+    input.value = ""; crewQuery = ""; renderCrewList(); input.focus();
+  };
+  box.appendChild(clr);
+
+  wrap.appendChild(box);
+  searchEl = wrap; searchInput = input;
+  return wrap;
+}
+
+function renderCrew(){
+  $main.innerHTML = "";
+  if (!searchEl) buildSearch();
+  searchInput.value = crewQuery;
+  searchEl.querySelector(".clear").style.visibility = crewQuery ? "visible" : "hidden";
+  $main.appendChild(searchEl);
+  listEl = el("div","list");
+  $main.appendChild(listEl);
+  renderCrewList();
+}
+
+/* 絞り込み結果だけを描き替える。検索欄には触らない。 */
+function renderCrewList(){
+  if (!listEl) return;
+  const first = !Store.lastCrew();
+  const roster = allCrew();
+  const pool = roster.filter(c => showRetired ? !c.active : c.active !== false);
+  const hits = pool.filter(c => matchCrew(c, crewQuery));
+  const retiredCount = roster.filter(c => c.active === false).length;
+
+  setHeader(STORE.code + " " + STORE.name,
+            showRetired ? "退職したクルー"
+                        : (first ? "自分を選ぶ" : "クルーを切り替える"),
+            hits.length + "名", !first);
+  searchEl.querySelector(".clear").style.visibility = crewQuery ? "visible" : "hidden";
+
+  listEl.innerHTML = "";
+  if (!hits.length){
+    const e = el("div","empty");
+    e.appendChild(el("b", null, "見つかりません"));
+    e.append("氏名の漢字か、従業員コード・格付で探してみてください");
+    listEl.appendChild(e);
+    return;
+  }
+
+  const groups = [["自店", hits.filter(c => c.isOwnStore !== false)],
+                  ["ヘルプ", hits.filter(c => c.isOwnStore === false)]];
+  for (const [label, list] of groups){
+    if (!list.length) continue;
+    listEl.appendChild(el("div","sec", label));
+    for (const c of list){
+      const row = el("button","row");
+      const body = el("div","body");
+      body.appendChild(el("div","name", c.name));
+
+      const sub = el("div","sub");
+      sub.append((c.grade || "格付未設定") + (c.isStaff ? "・社員" : ""));
+      const last = lastTrainedOn(c.code);
+      if (last){
+        const n = daysSince(last);
+        sub.appendChild(el("span", n >= 30 ? "stale" : "recent",
+          "  最終 " + last.slice(5).replace("-","/")
+          + (n === 0 ? "(今日)" : n === 1 ? "(昨日)" : "(" + n + "日前)")));
+      } else {
+        sub.appendChild(el("span","stale", "  記録なし"));
+      }
+      body.appendChild(sub);
+
+      /* 承認待ちがあれば出す。マネージャー承認は点が入る直前なので緑で強調 */
+      const pd = pendingOf(c);
+      if (pd.mgr.length || pd.trainer){
+        const bs = el("div","badges");
+        if (pd.mgr.length)
+          bs.appendChild(el("span","badge m",
+            "M承認 " + pd.mgr.length + "章 +" + pd.mgrPt + "pt"));
+        if (pd.trainer)
+          bs.appendChild(el("span","badge t", "T確認 " + pd.trainer + "項目"));
+        body.appendChild(bs);
+      }
+      row.appendChild(body);
+
+      const pt = pointsOf(c.code);
+      const gauge = el("div","gauge");
+      const fr = el("span","frac");
+      fr.appendChild(el("b", pt ? "on" : null, String(pt)));
+      fr.append("点");
+      gauge.appendChild(fr);
+      gauge.appendChild(profileBars(c.code));
+      row.appendChild(gauge);
+      row.appendChild(chevron());
+      row.onclick = () => {
+        bulk = null;                 // 承認者は人ごとに選び直す
+        Store.lastCrew(c.code); view = {name:"home", crew:c}; render();
+      };
+      listEl.appendChild(row);
+    }
+  }
+
+  if (!showRetired){
+    headerAction("エクスポート(印刷・Excel)", ICON_EXPORT, askExport);
+    headerAction("評価月の決め方", ICON_TUNE, () => { view = {name:"settings"}; render(); });
+    const add = el("button","switch","クルーを追加する");
+    add.onclick = askAddCrew;
+    listEl.appendChild(add);
+  }
+  if (retiredCount || showRetired){
+    const t = el("button","switch",
+      showRetired ? "在籍中のクルーに戻る" : "退職したクルーを見る(" + retiredCount + "名)");
+    t.onclick = () => { showRetired = !showRetired; crewQuery = ""; searchInput.value = "";
+                        renderCrewList(); };
+    listEl.appendChild(t);
+  }
+}
+
+/* 部ごとの到達度を10本の縦棒で示す */
+function profileBars(code){
+  const wrap = el("div","profile");
+  for (const bu of MASTER.bu){
+    const {done,total} = doneCount(code, VP_OF_BU.get(bu.code));
+    const ratio = total ? done/total : 0;
+    const bar = el("i");
+    bar.style.height = Math.max(3, Math.round(ratio*20)) + "px";
+    if (ratio > 0) bar.classList.add("on");
+    bar.title = bu.name + " " + done + "/" + total;
+    wrap.appendChild(bar);
+  }
+  return wrap;
+}
+
+/* ---- ② クルーのホーム: 点数・次の格付・部の一覧 ---- */
+function renderHome(){
+  const c = view.crew;
+  const pt = pointsOf(c.code);
+  const g = c.isStaff ? null : gradeAt(pt);
+  setHeader("", STORE.code + " " + STORE.name, "", false);
+  $main.innerHTML = "";
+
+  const hero = el("div","hero");
+  const who = el("div","who");
+  who.appendChild(el("b", null, c.name));
+  who.appendChild(el("span", null, c.isStaff ? (c.position || "社員") : (g.grade)));
+  if (c.active === false) who.appendChild(el("span","retired","退職"));
+  hero.appendChild(who);
+
+  const ptRow = el("div","pt");
+  ptRow.appendChild(el("em", null, String(pt)));
+  ptRow.appendChild(el("i", null, "/ " + MAX_PT + " 点"));
+  hero.appendChild(ptRow);
+
+  if (c.isStaff){
+    /* 社員の役職(SCF・MT1等)はポイントで上がるものではないので、
+       格付の道のりは見せず、全体のどこまで進んだかだけを出す。 */
+    const road = el("div","road");
+    const f = el("div");
+    f.style.width = (pt / MAX_PT * 100) + "%";
+    road.appendChild(f);
+    hero.appendChild(road);
+    const ends = el("div","roadEnds");
+    ends.appendChild(el("span", null, "全体の " + Math.round(pt / MAX_PT * 100) + "%"));
+    ends.appendChild(el("span", null, "残り " + (MAX_PT - pt) + " 点"));
+    hero.appendChild(ends);
+  } else if (g && g.next){
+    const need = g.nextAt - pt;
+    const line = el("div","toNext");
+    line.append(g.next + "まで あと ");
+    line.appendChild(el("b", null, String(need)));
+    line.append(" 点");
+    hero.appendChild(line);
+
+    const span = g.nextAt - g.base;
+    const road = el("div","road");
+    const f = el("div");
+    f.style.width = Math.max(0, Math.min(100, (pt - g.base) / span * 100)) + "%";
+    road.appendChild(f);
+    hero.appendChild(road);
+    const ends = el("div","roadEnds");
+    ends.appendChild(el("span", null, g.grade + " " + g.base));
+    ends.appendChild(el("span", null, g.next + " " + g.nextAt));
+    hero.appendChild(ends);
+  } else if (g){
+    hero.appendChild(el("div","toNext","最上位の格付に到達しています"));
+  }
+  $main.appendChild(hero);
+
+  /* 承認待ちはここでは件数だけ。中身は専用画面に分けた。
+     クルー本人が見る画面なので、作業リストで埋めないようにする。 */
+  const pd = pendingOf(c);
+  if (pd.mgr.length || pd.trainer){
+    const b = el("button","todobar");
+    const t = el("div","txt");
+    t.appendChild(el("div","t1","承認待ち"));
+    const bits = [];
+    if (pd.mgr.length) bits.push("マネージャー承認 " + pd.mgr.length + "章");
+    if (pd.trainer) bits.push("トレーナー確認 " + pd.trainer + "項目");
+    t.appendChild(el("div","t2", bits.join(" / ")));
+    b.appendChild(t);
+    if (pd.mgr.length) b.appendChild(el("span","badge m", "+" + pd.mgrPt + "pt"));
+    b.appendChild(chevron());
+    b.onclick = () => { view = {name:"todo", crew:c}; render(); };
+    $main.appendChild(b);
+  }
+
+  /* 部の一覧。点が近い部を上に寄せて、次に手をつける場所が分かるようにする */
+  const list = MASTER.bu.map(bu => {
+    const d = doneCount(c.code, VP_OF_BU.get(bu.code));
+    const near = bu.chapters.reduce((m, ch) => {
+      const p = chapterPending(c.code, ch);
+      if (p.basicLeft > 0) m = Math.min(m, p.basicLeft);
+      else if (ch.hasAdvance && p.advanceLeft > 0) m = Math.min(m, p.advanceLeft);
+      return m;
+    }, Infinity);
+    return {bu, d, near};
+  });
+  /* 並べ替えはしない。部・章の順序はSUBの体系そのものなので、
+     日によって並びが変わると「どこにあったか」が覚えられなくなる。 */
+
+  $main.appendChild(el("div","sec","取り組む領域"));
+  for (const {bu, d, near} of list){
+    const row = el("button","row");
+    const body = el("div","body");
+    body.appendChild(el("div","name", bu.name));
+
+    const buMax = bu.chapters.reduce((s2, ch) =>
+      s2 + (ch.basicMaxPt || 0) + (ch.hasAdvance ? (ch.advanceMaxPt || 0) : 0), 0);
+    const buGot = bu.chapters.reduce((s2, ch) => s2 + chapterEarned(c.code, ch), 0);
+    const m = meter(d.done, d.total);
+    m.insertBefore(ptsTag(buGot, buGot > 0, buMax), m.querySelector(".frac"));
+    body.appendChild(m);
+
+    const waiting = bu.chapters.reduce((n, ch) =>
+      n + (ch.hasAdvance ? ["basic","advance"] : ["basic"])
+            .filter(lv => readyForMgr(c.code, ch, lv)).length, 0);
+    if (waiting)
+      body.appendChild(el("div","soon", "マネージャー承認待ち " + waiting + "章"));
+    else if (buGot === buMax) body.appendChild(el("div","earned","すべて承認済み"));
+    else if (d.done === d.total)
+      body.appendChild(el("div","earned","トレーナー確認は完了"));
+    else if (near !== Infinity && near <= 3)
+      body.appendChild(el("div","soon","あと" + near + "項目でマネージャー承認できます"));
+    row.appendChild(body);
+    row.appendChild(chevron());
+    row.onclick = () => { view = {name:"chapter", crew:c, bu}; render(); };
+    $main.appendChild(row);
+  }
+
+  if (bulk){
+    const b = el("button","switch","一括入力モードをやめる");
+    b.onclick = () => { bulk = null; render(); };
+    $main.appendChild(b);
+  } else {
+    const b = el("button","switch","一括入力モードにする");
+    b.onclick = () => askBulk(c);
+    $main.appendChild(b);
+  }
+
+  const sw = el("button","switch",
+    c.isStaff ? "クルーの進み具合を見る" : "ほかのクルーに切り替える");
+  sw.onclick = () => { view = {name:"crew"}; render(); };
+  $main.appendChild(sw);
+
+  /* 退職しても記録は消さない。一覧から隠すだけ。 */
+  if (c.active === false){
+    const b = el("button","switch","在籍に戻す");
+    b.onclick = () => askRejoin(c);
+    $main.appendChild(b);
+  } else {
+    const b = el("button","switch danger","退職にする");
+    b.onclick = () => askRetire(c);
+    $main.appendChild(b);
+  }
+}
+
+/* ---- 承認待ちの専用画面 ---- */
+function renderTodo(){
+  const c = view.crew;
+  const pd = pendingOf(c);
+  setHeader(c.name, "承認待ち",
+            (pd.mgr.length + pd.tr.length) + "章", true);
+  $main.innerHTML = "";
+
+  const section = (title, sub, list, kind) => {
+    if (!list.length) return;
+    const box = el("div","todo");
+    const head = el("div","head");
+    head.appendChild(el("b", null, title));
+    head.append(sub);
+    box.appendChild(head);
+    for (const m of list){
+      const it = el("button","item");
+      const t = el("div","t1");
+      t.append(m.ch.name);
+      t.appendChild(el("div","t2",
+        m.bu.name + " / " + (m.lv === "basic" ? "Basic" : "Advanced")));
+      it.appendChild(t);
+      if (kind === "m") it.appendChild(el("span","pt2", "+" + m.pt + "pt"));
+      else it.appendChild(el("span","left", "あと" + m.left + "項目"));
+      it.appendChild(chevron());
+      it.onclick = () => { view = {name:"viewpoints", crew:c, bu:m.bu, ch:m.ch}; render(); };
+      box.appendChild(it);
+    }
+    $main.appendChild(box);
+  };
+
+  /* 点が入るものを先に。次にトレーナー確認待ちを、残りの少ない順で。 */
+  section("マネージャー承認", "押せば " + pd.mgrPt + "pt 入ります", pd.mgr, "m");
+  section("トレーナー確認", "残りが少ない章から", pd.tr, "t");
+
+  if (!pd.mgr.length && !pd.tr.length){
+    const e = el("div","empty");
+    e.appendChild(el("b", null, "承認待ちはありません"));
+    e.append("章を開いてセルフチェックから進めてください");
+    $main.appendChild(e);
+  }
+}
+
+/* ---- ③ 章の一覧 ---- */
+function renderChapter(){
+  const {crew:c, bu} = view;
+  const {done,total} = doneCount(c.code, VP_OF_BU.get(bu.code));
+  setHeader(c.name, bu.name, done + "/" + total, true);
+  $main.innerHTML = "";
+  for (const ch of bu.chapters){
+    const d = doneCount(c.code, VP_OF_CH.get(ch.code));
+    const row = el("button","row");
+    const body = el("div","body");
+    body.appendChild(el("div","name", ch.name));
+
+    /* この章で入るポイントを、分数(項目数)の左に大きく置く。
+       章単位加算なので、獲得済みかどうかで色を変える。 */
+    const chMax = (ch.basicMaxPt || 0) + (ch.hasAdvance ? (ch.advanceMaxPt || 0) : 0);
+    const got = chapterEarned(c.code, ch);
+    const m = meter(d.done, d.total);
+    m.insertBefore(ptsTag(chMax, got === chMax), m.querySelector(".frac"));
+    body.appendChild(m);
+
+    /* SALSAからの判定材料。承認の可否は変えない(出すだけ)。 */
+    const hint = hintOf(c.code, ch.code);
+    if (hint) body.appendChild(el("div","busy", hintText(hint)));
+
+    const p = chapterPending(c.code, ch);
+    const lvs = ch.hasAdvance ? ["basic","advance"] : ["basic"];
+    const ready = lvs.filter(lv => readyForMgr(c.code, ch, lv));
+    if (ready.length)
+      body.appendChild(el("div","soon", "マネージャー承認できます +"
+        + ready.reduce((n, lv) => n + (lv === "basic"
+            ? (ch.basicMaxPt||0) : (ch.advanceMaxPt||0)), 0) + "pt"));
+    else if (p.basicLeft > 0)
+      body.appendChild(el("div","soon",
+        "トレーナー確認があと" + p.basicLeft + "項目"));
+    else if (ch.hasAdvance && p.advanceLeft > 0)
+      body.appendChild(el("div","soon",
+        "Advance トレーナー確認があと" + p.advanceLeft + "項目"));
+    else
+      body.appendChild(el("div","earned", "承認済み"));
+
+    row.appendChild(body);
+    row.appendChild(chevron());
+    row.onclick = () => { view = {name:"viewpoints", crew:c, bu, ch}; render(); };
+    $main.appendChild(row);
+  }
+}
+
+/* ---- ④ 観点(チェック) ---- */
+function renderViewpoints(){
+  const {crew:c, ch} = view;
+  const d = doneCount(c.code, VP_OF_CH.get(ch.code));
+  setHeader(c.name, ch.name, d.done + "/" + d.total, true);
+  $main.innerHTML = "";
+
+  if (bulk){
+    const bar = el("div","bulkbar");
+    const t = findCrew(bulk.trainer), m = findCrew(bulk.manager);
+    bar.appendChild(el("b", null, "一括入力中"));
+    bar.append("T " + (t ? t.name : "?") + " / M " + (m ? m.name : "?"));
+    const off = el("button", null, "やめる");
+    off.onclick = () => { bulk = null; render(); };
+    bar.appendChild(off);
+    $main.appendChild(bar);
+  }
+
+  $main.appendChild(mgrBox(c, ch));
+
+  for (const sec of ch.sections){
+    $main.appendChild(el("div","sec", sec.name));
+    for (const vp of sec.viewpoints){
+      $main.appendChild(viewpointRow(c, ch, vp));
+    }
+  }
+}
+
+/* 章のマネージャー承認欄。観点を全部トレーナー確認済にすると押せるようになる。 */
+function mgrBox(crew, ch){
+  const box = el("div","mgr");
+  const levels = ch.hasAdvance ? ["basic","advance"] : ["basic"];
+  for (const lv of levels){
+    const row = el("div","lv");
+    const pt = lv === "basic" ? (ch.basicMaxPt || 0) : (ch.advanceMaxPt || 0);
+    row.appendChild(el("div","lvname", (lv === "basic" ? "Basic" : "Advanced")
+                                       + " " + pt + "pt"));
+    const ap = chApproval(crew.code, ch.code, lv);
+    if (ap){
+      const who = findCrew(ap.by);
+      const st = el("div","state");
+      st.appendChild(el("b", null, "承認済"));
+      st.append(" " + (who ? who.name : ""));
+      row.appendChild(st);
+      row.appendChild(el("div","done", ap.d.slice(2).replaceAll("-","/")));
+      /* 承認の取り消しは、押し間違いに備えて残す */
+      const u = el("button","undo");
+      u.setAttribute("aria-label","承認を取り消す");
+      u.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" '+
+        'stroke="currentColor" stroke-width="2.1" stroke-linecap="round" '+
+        'stroke-linejoin="round"><path d="M3 7v6h6"/>'+
+        '<path d="M3.5 13a9 9 0 1 0 2.3-6.4L3 9"/></svg>';
+      u.onclick = () => { Store.approval(crew.code, ch.code, lv, null); render(); };
+      row.appendChild(u);
+    } else {
+      const left = VP_OF_CH.get(ch.code)
+        .filter(v => stageOf(crew.code, v, lv) < STAGE_MAX).length;
+      const blocked = lv === "advance" && !isChApproved(crew.code, ch.code, "basic");
+      row.appendChild(el("div","state",
+        blocked ? "Basicの承認が先です"
+                : left ? "トレーナー確認があと" + left + "項目" : "承認できます"));
+      const b = el("button", null, "承認する");
+      b.disabled = !readyForMgr(crew.code, ch, lv);
+      b.onclick = () => bulk ? bulkApprove(crew, ch, lv) : askMgrApproval(crew, ch, lv);
+      row.appendChild(b);
+    }
+    box.appendChild(row);
+  }
+  return box;
+}
+
+function viewpointRow(crew, ch, vp){
+  const wrap = el("div","vp");
+  wrap.appendChild(el("div","text", vp.text));
+  const foot = el("div","foot");
+
+  const levels = ch.hasAdvance ? ["basic","advance"] : ["basic"];
+  const chips = el("div","chips");
+  for (const lv of levels){
+    const stage = stageOf(crew.code, vp.code, lv);
+    const b = el("button","chip s"+stage + (ch.hasAdvance ? " lv" : ""));
+    b.textContent = ch.hasAdvance
+      ? (lv === "basic" ? "B" : "A") + " " + STAGE_LABEL[stage]
+      : STAGE_LABEL[stage];
+    /* Advanceは、同じ観点のBasicがトレーナー確認済になってから進める */
+    const locked = lv === "advance" && stageOf(crew.code, vp.code, "basic") < STAGE_MAX;
+    if (locked) b.disabled = true;
+    b.onclick = () => {
+      if (stage >= STAGE_MAX) return;
+      const before = pointsOf(crew.code);
+      advanceWithApprover(crew, vp, lv, stage, () => {
+        const gained = pointsOf(crew.code) - before;
+        render();
+        if (gained > 0) celebrate(gained, crew.code);
+      });
+    };
+    chips.appendChild(b);
+  }
+  foot.appendChild(chips);
+
+  /* 一括入力中は、未確定の段階を1タップで確定まで進めるボタンを出す */
+  if (bulk){
+    const lv = levels.find(l => stageOf(crew.code, vp.code, l) < STAGE_MAX
+      && !(l === "advance" && stageOf(crew.code, vp.code, "basic") < STAGE_MAX)
+      && !isChApproved(crew.code, ch.code, l));
+    if (lv){
+      const q = el("button","bulk",
+        "確認済にする" + (ch.hasAdvance ? "(" + (lv === "basic" ? "B" : "A") + ")" : ""));
+      q.onclick = () => bulkConfirm(crew, vp, lv);
+      foot.appendChild(q);
+    }
+  }
+
+  const dt = doneDate(crew.code, vp.code, "basic") || doneDate(crew.code, vp.code, "advance");
+  if (dt) foot.appendChild(el("span","done", dt.replaceAll("-","/")));
+
+  /* 段階が1つでも進んでいれば、両方の操作を常に出す。
+       戻す     … 自分の押し間違いを1段階取り消す。記録に残さない
+       差し戻す … 承認者が判断して1段階下げる。日付と理由を残す
+     どちらか一方しか出ないと、確定を差し戻せない・押し間違いを直せない、
+     という取りこぼしが起きるため、条件で出し分けない。 */
+  /* 操作の出し分け
+       確定        … 「戻す」だけ。押し間違いを直す道は残す
+       T待ち・M待ち … 「戻す」と「差し戻す」の両方
+     差し戻しは承認者が判断して下げる動作なので、確定済みには出さない。 */
+  const topLevel = [...levels].reverse()
+        .find(lv => stageOf(crew.code, vp.code, lv) > 0);
+  if (topLevel){
+    const st = stageOf(crew.code, vp.code, topLevel);
+    /* 章が承認済みなら、観点は動かせない(記録が確定しているため) */
+    const frozen = isChApproved(crew.code, ch.code, topLevel);
+
+    const u = el("button","undo");
+    u.setAttribute("aria-label","ひとつ戻す");
+    u.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" '+
+      'stroke="currentColor" stroke-width="2.1" stroke-linecap="round" '+
+      'stroke-linejoin="round"><path d="M3 7v6h6"/>'+
+      '<path d="M3.5 13a9 9 0 1 0 2.3-6.4L3 9"/></svg>';
+    u.onclick = () => {
+      Store.set(crew.code, vp.code, topLevel, st-1, null);
+      render();
+    };
+    if (!frozen){
+      foot.appendChild(u);
+      const btn = el("button","sendback","差し戻す");
+      btn.onclick = () => askSendBack(crew, vp, topLevel);
+      foot.appendChild(btn);
+    }
+  }
+
+  wrap.appendChild(foot);
+
+  /* 差し戻された観点は、理由とともにその場に出す */
+  let backInfo = null, backLv = null;
+  for (const lv of levels){
+    const b = sentBack(crew.code, vp.code, lv);
+    if (b){ backInfo = b; backLv = lv; }
+  }
+  if (backInfo){
+    wrap.classList.add("sent");
+    const note = el("div","backnote");
+    note.appendChild(el("b", null, "差し戻し"));
+    note.append(" " + backInfo.d.replaceAll("-","/")
+      + (ch.hasAdvance ? "(" + (backLv === "basic" ? "Basic" : "Advance") + ")" : ""));
+    if (backInfo.r) note.append(" / " + backInfo.r);
+    wrap.appendChild(note);
+  }
+
+  if (levels.every(lv => stageOf(crew.code, vp.code, lv) >= STAGE_MAX))
+    wrap.classList.add("is-done");
+  return wrap;
+}
+
+/* 差し戻しの確認。理由は任意だが、残っていると次に何をすればよいかが伝わる。
+   window.prompt は環境によって無効化されるため、画面内のシートで受け取る。 */
+let sheetEls = null;
+function ensureSheet(){
+  if (sheetEls) return sheetEls;
+  const bg = document.createElement("div"); bg.id = "sheetbg";
+  const sh = document.createElement("div"); sh.id = "sheet";
+  sh.setAttribute("role","dialog"); sh.setAttribute("aria-modal","true");
+  sh.innerHTML =
+    '<h2>差し戻す</h2>' +
+    '<div class="target"></div>' +
+    '<label for="sbReason">理由(任意)</label>' +
+    '<textarea id="sbReason" placeholder="できていなかったことを書くと、本人に伝わります"></textarea>' +
+    '<div class="acts">' +
+      '<button type="button" class="cancel">やめる</button>' +
+      '<button type="button" class="confirm">差し戻す</button>' +
+    '</div>';
+  document.body.appendChild(bg); document.body.appendChild(sh);
+  sheetEls = {bg, sh,
+    target: sh.querySelector(".target"),
+    input: sh.querySelector("#sbReason"),
+    cancel: sh.querySelector(".cancel"),
+    confirm: sh.querySelector(".confirm")};
+  return sheetEls;
+}
+
+function askSendBack(crew, vp, lv){
+  const cur = stageOf(crew.code, vp.code, lv);
+  const kind = cur === 3 ? "m" : "t";
+  const cands = approversFor(crew, cur);
+  const recent = recentApprover(kind);
+  const sorted = cands.slice().sort((a, b) =>
+    (b.code === recent) - (a.code === recent) || (b.rank || 0) - (a.rank || 0));
+  const labelOf = c => c.name + "(" + (c.position || c.grade) + ")";
+  openSheet({
+    title: "差し戻す",
+    note: vp.text,
+    reason: true,
+    okLabel: "差し戻す",
+    danger: true,
+    fields: sorted.length ? [{key:"by", label:"差し戻す人",
+                              options: sorted.map(labelOf)}] : [],
+    onOk: (v) => {
+      const picked = sorted.find(c => labelOf(c) === v.by);
+      if (picked) rememberApprover(kind, picked.code);
+      Store.set(crew.code, vp.code, lv, cur - 1, null,
+                {date: today(), reason: v.reason, by: picked ? picked.code : null});
+    },
+  });
+}
+
+/* 汎用の入力シート。fields で項目を組み立て、OKで values を返す。
+   window.prompt / confirm は環境によって無効化されるため、すべてこれで受ける。 */
+function openSheet({title, note, fields = [], reason = false,
+                    okLabel = "決定", danger = false, onOk}){
+  const {bg, sh, target, input, cancel, confirm} = ensureSheet();
+  sh.querySelector("h2").textContent = title;
+  target.textContent = note || "";
+  target.style.display = note ? "" : "none";
+
+  /* 差し戻し用の理由欄と、追加用の項目欄を入れ替える */
+  const label = sh.querySelector("label");
+  const box = sh.querySelector(".fields") || (() => {
+    const d = el("div","fields");
+    sh.insertBefore(d, sh.querySelector(".acts"));
+    return d;
+  })();
+  /* 理由欄は reason:true のときだけ。項目欄は fields があるときだけ。
+     どちらも要らない確認だけのシート(退職など)では両方隠す。 */
+  label.style.display = input.style.display = reason ? "" : "none";
+  box.style.display = fields.length ? "" : "none";
+  box.innerHTML = "";
+  const inputs = {};
+  for (const f of fields){
+    const w = el("div","field");
+    w.appendChild(el("label", null, f.label));
+    let node;
+    if (f.options){
+      node = document.createElement("select");
+      for (const o of f.options){
+        const op = document.createElement("option");
+        op.value = o; op.textContent = o;
+        node.appendChild(op);
+      }
+      if (f.value) node.value = f.value;
+    } else {
+      node = document.createElement("input");
+      node.type = f.type || "text";
+      node.value = f.value || "";
+      if (f.placeholder) node.placeholder = f.placeholder;
+    }
+    w.appendChild(node);
+    if (f.note) w.appendChild(el("div","note", f.note));
+    box.appendChild(w);
+    inputs[f.key] = node;
+  }
+  if (reason) input.value = "";
+
+  confirm.textContent = okLabel;
+  confirm.className = "confirm " + (danger ? "danger" : "go");
+
+  function close(){
+    bg.classList.remove("show"); sh.classList.remove("show");
+    cancel.onclick = confirm.onclick = bg.onclick = null;
+  }
+  cancel.onclick = close; bg.onclick = close;
+  confirm.onclick = () => {
+    const vals = {};
+    for (const k of Object.keys(inputs)) vals[k] = inputs[k].value.trim();
+    if (reason) vals.reason = input.value.trim();
+    const err = onOk(vals);
+    if (err){ alertInSheet(box, err); return; }   // 入力に不備があれば閉じない
+    close(); render();
+  };
+  bg.classList.add("show"); sh.classList.add("show");
+  setTimeout(() => {
+    const first = fields.length ? Object.values(inputs)[0] : (reason ? input : null);
+    if (first) first.focus();
+  }, 260);
+}
+
+function alertInSheet(box, msg){
+  let e = box.querySelector(".err");
+  if (!e){ e = el("div","note err"); box.appendChild(e); }
+  e.style.color = "var(--red)";
+  e.textContent = msg;
+}
+
+/* 章のマネージャー承認。本の運用どおり、章に対して1回だけ行う。
+   承認した時点でその章の満点が入り、スコアカードに書く日付がここで決まる。 */
+function askMgrApproval(crew, ch, level){
+  const managers = approversFor(crew, 3);
+  if (!managers.length){
+    openSheet({title:"マネージャー承認", okLabel:"閉じる", onOk:()=>{},
+      note:"承認できる社員が名簿にいません。店舗情報の社員欄を確認してください。"});
+    return;
+  }
+  const labelOf = c => c.name + "(" + (c.position || c.grade) + ")";
+  const recent = recentApprover("m");
+  const sorted = managers.slice().sort((a,b) => (b.code === recent) - (a.code === recent));
+  const pt = level === "basic" ? (ch.basicMaxPt || 0) : (ch.advanceMaxPt || 0);
+  openSheet({
+    title: "マネージャー承認",
+    note: ch.name + "(" + (level === "basic" ? "Basic" : "Advanced") + ")"
+        + " を承認します。" + pt + "pt が入ります。"
+        + (hintOf(crew.code, ch.code)
+           ? "\nSALSA: " + hintText(hintOf(crew.code, ch.code)) : ""),
+    okLabel: "承認する",
+    fields: [{key:"by", label:"承認する社員", options: sorted.map(labelOf),
+              note:"社員のみ承認できます"}],
+    onOk: (v) => {
+      const picked = sorted.find(c => labelOf(c) === v.by);
+      if (!picked) return "承認する人を選んでください";
+      rememberApprover("m", picked.code);
+      const before = pointsOf(crew.code);
+      Store.approval(crew.code, ch.code, level, {d: today(), by: picked.code});
+      const gained = pointsOf(crew.code) - before;
+      setTimeout(() => { if (gained > 0) celebrate(gained, crew.code); }, 80);
+    },
+  });
+}
+
+/* 一括入力モードの開始。承認者を先に決めてしまう。 */
+function askBulk(crew){
+  const trainers = approversFor(crew, 2);
+  const managers = approversFor(crew, 3);
+  if (!managers.length){
+    openSheet({title:"一括入力", okLabel:"閉じる", onOk:()=>{},
+      note:"承認できる社員が名簿にいません。店舗情報の社員欄を確認してください。"});
+    return;
+  }
+  const labelOf = c => c.name + "(" + (c.position || c.grade) + ")";
+  const tList = trainers.length ? trainers : managers;
+  openSheet({
+    title: "一括入力モード",
+    note: crew.name + " の既に承認済みの項目を、まとめて記録します。"
+        + "1タップで確定まで進みます。",
+    okLabel: "始める",
+    fields: [
+      {key:"t", label:"トレーナー承認者", options: tList.map(labelOf)},
+      {key:"m", label:"マネージャー承認者", options: managers.map(labelOf),
+       note:"記録に残る承認者です。実際に承認した人を選んでください。"},
+    ],
+    onOk: (v) => {
+      const t = tList.find(c => labelOf(c) === v.t);
+      const m = managers.find(c => labelOf(c) === v.m);
+      if (!t || !m) return "承認者を選んでください";
+      bulk = {trainer: t.code, manager: m.code};
+    },
+  });
+}
+
+/* 一括入力: 1観点を確定まで一気に進める */
+function bulkConfirm(crew, vp, lv){
+  Store.set(crew.code, vp.code, lv, 1, null);
+  Store.set(crew.code, vp.code, lv, 2, today(), null, bulk.trainer);
+  render();
+}
+
+/* 一括入力中の章承認。承認者は最初に選んだ人をそのまま使う。 */
+function bulkApprove(crew, ch, lv){
+  const before = pointsOf(crew.code);
+  Store.approval(crew.code, ch.code, lv, {d: today(), by: bulk.manager});
+  const gained = pointsOf(crew.code) - before;
+  render();
+  if (gained > 0) celebrate(gained, crew.code);
+}
+
+/* 承認者を選んでから進める。セルフ(→T待ち)は本人の申告なので選ばせない。 */
+function advanceWithApprover(crew, vp, lv, stage, after){
+  if (stage + 1 === 1){            // 未着手 → セルフ済(本人の申告)
+    Store.set(crew.code, vp.code, lv, 1, null);
+    after && after(); return;
+  }
+  const toStage = 2;               // セルフ済 → トレーナー確認済
+  const kind = "t";
+  const cands = approversFor(crew, toStage);
+  if (!cands.length){
+    openSheet({
+      title: "トレーナー確認",
+      note: crew.name + "(" + (crew.grade || "格付未設定") +
+            ")を確認できる人がいません。格付が2つ上以上のクルーが必要です。",
+      okLabel: "閉じる", onOk: () => {},
+    });
+    return;
+  }
+  const recent = recentApprover(kind);
+  const sorted = cands.slice().sort((a, b) =>
+    (b.code === recent) - (a.code === recent) || (b.rank || 0) - (a.rank || 0));
+  openSheet({
+    title: "トレーナー確認",
+    note: vp.text,
+    okLabel: "確認した",
+    fields: [{
+      key: "by", label: "確認するトレーナー",
+      options: sorted.map(c => c.name + "(" + (c.position || c.grade) + ")"),
+      note: "格付が2つ上以上の人が候補に出ます",
+    }],
+    onOk: (v) => {
+      const picked = sorted[sorted.findIndex(c =>
+        c.name + "(" + (c.position || c.grade) + ")" === v.by)];
+      if (!picked) return "承認する人を選んでください";
+      rememberApprover(kind, picked.code);
+      Store.set(crew.code, vp.code, lv, 2, today(), null, picked.code);
+      after && after();
+    },
+  });
+}
+
+/* 入社年月日を端末側に持つ。CSVに入っていればそちらが優先される。 */
+function askHired(crew, fromCsv){
+  openSheet({
+    title: "入社年月日",
+    note: fromCsv
+      ? "この人の入社年月日はSALSAの名簿から来ています。ここで入れた日付は、"
+        + "名簿側が空になったときだけ使われます。"
+      : "評価月の判定に使います。いまの決め方は " + evalRuleText().slice(5) + " です。",
+    okLabel: "保存する",
+    fields: [{key:"d", label:"入社年月日", type:"date",
+              value: crew.hiredManual || hiredOf(crew) || ""}],
+    onOk: (v) => {
+      if (!v.d) return "日付を入れてください";
+      if (v.d > today()) return "未来の日付になっています";
+      Store.crewPatch(crew.code, {hiredManual: v.d});
+    },
+  });
+}
+
+/* 新しく入ったクルーを、その場で名簿に足す。
+   次回のCSV取り込みで同じ従業員コードが来たら、そちらの情報で更新される。 */
+function askAddCrew(){
+  const GRADES_LIST = ["T","LD1","LD2","LD3","AS1","AS2","AS3","PT1","PT2"];
+  openSheet({
+    title: "クルーを追加する",
+    note: "SALSAの名簿に載る前の新人を、先に登録できます。",
+    okLabel: "追加する",
+    fields: [
+      {key:"name",  label:"氏名", placeholder:"山田　太郎"},
+      {key:"code",  label:"従業員コード", placeholder:"RE617",
+       note:"SALSAと同じコードを入れてください。違うと後で取り込めません。"},
+      {key:"grade", label:"格付", options: GRADES_LIST, value:"T"},
+    ],
+    onOk: (v) => {
+      if (!v.name) return "氏名を入れてください";
+      if (!v.code) return "従業員コードを入れてください";
+      if (findCrew(v.code)) return "その従業員コードはすでに登録されています";
+      Store.crewPatch(v.code, {
+        name: v.name, grade: v.grade,
+        rank: GRADES_LIST.indexOf(v.grade) + 1,
+        position: "", isStaff: false, isOwnStore: true, active: true,
+      });
+      Store.lastCrew(v.code);
+      view = {name:"home", crew: findCrew(v.code)};
+    },
+  });
+}
+
+/* 退職しても記録は消さない。在籍外にして一覧から隠すだけにする。 */
+function askRetire(crew){
+  openSheet({
+    title: "退職にする",
+    note: crew.name + " を在籍中の一覧から外します。チェックの記録は残ります。",
+    okLabel: "退職にする",
+    danger: true,
+    onOk: () => {
+      Store.crewPatch(crew.code, {active: false});
+      Store.lastCrew(null);
+      view = {name:"crew"};
+    },
+  });
+}
+
+function askRejoin(crew){
+  openSheet({
+    title: "在籍に戻す",
+    note: crew.name + " を在籍中の一覧に戻します。",
+    okLabel: "在籍に戻す",
+    onOk: () => {
+      Store.crewPatch(crew.code, {active: true});
+      showRetired = false;
+    },
+  });
+}
+
+/* ---- 加点の瞬間だけ、はっきり伝える ---- */
+/* 点が動くのは章のマネージャー承認のときだけ。その一瞬にだけ動きを使う。 */
+let toastTimer = null;
+function celebrate(gained, code){
+  let box = document.getElementById("toast");
+  if (!box){
+    box = document.createElement("div");
+    box.id = "toast";
+    box.setAttribute("role","status");
+    document.body.appendChild(box);
+  }
+  const pt = pointsOf(code);
+  const crew = findCrew(code);
+  const g = crew && crew.isStaff ? null : gradeAt(pt);
+
+  box.innerHTML = "";
+  box.appendChild(el("div","big", "+" + gained + " pt"));
+  box.appendChild(el("div","sub", "合計 " + pt + " 点"));
+
+  if (g){
+    const before = gradeAt(pt - gained).grade;
+    if (before !== g.grade) box.appendChild(el("div","rank", g.grade + " に到達"));
+    else if (g.next) box.appendChild(el("div","rank",
+      g.next + "まで あと " + (g.nextAt - pt) + " 点"));
+  }
+
+  box.classList.add("show");
+  if (navigator.vibrate) navigator.vibrate(gained >= 50 ? [18,60,18] : 18);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.classList.remove("show"), 2600);
+}
+
+/* ================= エクスポート =================
+   紙(印刷) … 店舗の端末から印刷し、それを見ながらスコアカードとパーソナル
+              レコードに書き写す。期間内にマネージャー承認した章だけを出す。
+   Excel    … SALSAの 個人別実績 / 個人別実績_ヘルプ へ取り込む。
+              こちらは期間ではなく「終了日時点の全部」(スナップショット)。 */
+
+/* スコアカードの日付は 西暦下2桁/月/日。例 24/1/15 */
+function scoreDate(iso){
+  if (!iso) return "";
+  const p = iso.split("-");
+  return p[0].slice(2) + "/" + Number(p[1]) + "/" + Number(p[2]);
+}
+function shiftDays(iso, n){
+  const t = new Date(iso + "T00:00:00");
+  t.setDate(t.getDate() + n);
+  return isoOf(t);
+}
+function shiftMonths(iso, n){
+  const t = new Date(iso + "T00:00:00");
+  t.setMonth(t.getMonth() + n);
+  return isoOf(t);
+}
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+/* 前回どこまで出したか。次回の開始日を自動で入れるために覚えておく。 */
+function lastExportEnd(v){
+  if (v === undefined){
+    const r = Store.crewPatch("__period");
+    return r && typeof r.end === "string" ? r.end : null;
+  }
+  Store.crewPatch("__period", {end: v});
+}
+
+/* その人の章承認。from/to は省略可(null で制限なし)。本の並び順のまま返す。 */
+function approvalsOf(code, from, to){
+  const out = [];
+  for (const bu of MASTER.bu){
+    for (const ch of bu.chapters){
+      for (const lv of ["basic","advance"]){
+        if (lv === "advance" && !ch.hasAdvance) continue;
+        const a = chApproval(code, ch.code, lv);
+        if (!a || !a.d) continue;
+        if (from && a.d < from) continue;
+        if (to && a.d > to) continue;
+        out.push({bu, ch, lv, d: a.d, by: a.by || null,
+                  pt: lv === "basic" ? (ch.basicMaxPt || 0) : (ch.advanceMaxPt || 0)});
+      }
+    }
+  }
+  return out;
+}
+function ptSum(list){ return list.reduce((s, a) => s + a.pt, 0); }
+
+/* 部ごとのポイント(パーソナルレコードの転記先)。終了日時点で数える。 */
+function buPointsAsOf(code, to){
+  const m = new Map(MASTER.bu.map(b => [b.code, 0]));
+  for (const a of approvalsOf(code, null, to)) m.set(a.bu.code, m.get(a.bu.code) + a.pt);
+  return m;
+}
+/* ---- 評価月 ---- */
+/* 評価月の決め方は店舗によって違う(変更している店舗もある)ため、
+   プログラムに埋め込まず設定として持つ。設定は端末に残り、名簿を入れ直しても消えない。
+   既定は「LD以下=入社月から4か月ごと(年3回) / AS1以上=3月・9月 / TRYは初回だけ」。 */
+const EVAL_DEFAULT = {
+  base: "hired",        // "hired"=入社月から数える / "fixed"=決まった月
+  span: 3,              // 何か月ごとか。3なら年4回で、クルーは3つの組に分かれる
+                        // (1・4・7・10 / 2・5・8・11 / 3・6・9・12)
+  months: [3, 6, 9, 12],// fixed のときの評価月
+  seniorSame: false,    // AS1以上もLD以下と同じ扱いにするか
+  seniorMonths: [3, 9], // AS1以上の評価月
+};
+function evalConf(patch){
+  if (patch !== undefined){ Store.crewPatch("__eval", patch); return; }
+  return Object.assign({}, EVAL_DEFAULT, Store.crewPatch("__eval") || {});
+}
+function parseMonths(t){
+  const z = String(t || "").replace(/[０-９]/g,
+    ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+  const ns = (z.match(/\d+/g) || []).map(Number).filter(n => n >= 1 && n <= 12);
+  return Array.from(new Set(ns)).sort((a, b) => a - b);
+}
+function monthsLabel(list){ return list.map(m => m + "月").join("・"); }
+/* クルーが何組に分かれるか(既定は3組)と、1人あたり年に何回あるか(既定は4回)。
+   会社の決まりが変わったら EVAL_DEFAULT.span だけ直せばよい。 */
+function evalGroups(){ return evalConf().span; }
+function evalPerYear(){ return Math.round(12 / evalConf().span); }
+const EVAL_SENIOR_SPAN = 6;   // AS1以上は年2回
+/* 等間隔の組み合わせを全部作る。4か月ごとなら 1・5・9 / 2・6・10 / 3・7・11 / 4・8・12 の
+   4通りしかないので、カンマ入力にせず選ぶだけにする。 */
+function monthSets(span){
+  const out = [];
+  for (let start = 1; start <= span; start++){
+    const set = [];
+    for (let m = start; m <= 12; m += span) set.push(m);
+    out.push(set);
+  }
+  return out;
+}
+function monthChoices(span, current){
+  const sets = monthSets(span).map(monthsLabel);
+  const now = monthsLabel(current);
+  if (sets.indexOf(now) < 0 && current.length) sets.unshift(now);
+  return {options: sets, value: now};
+}
+function pad2(n){ return String(n).padStart(2, "0"); }
+
+/* TRYはLD以下にまとめて同じ扱いにする(格付が付く前も、付いた後も同じ数え方)。 */
+function isSeniorGrade(c){ return /^(AS|PT)/.test(c.grade || ""); }
+/* CSVで入ってきた入社年月日を優先し、無ければ端末で手入力したものを使う。 */
+function hiredOf(c){
+  return c.hiredOn || c.hiredAt || c.joinedOn || c.hiredManual || "";
+}
+function monthsFrom(hired, y, mo){
+  const p = hired.split("-");
+  return (y - Number(p[0])) * 12 + (mo - Number(p[1]));
+}
+/* その年月がその人の評価月か。"評価月" / "—" / "不明" / "対象外" を返す。 */
+function evalStateOn(c, y, mo){
+  const cf = evalConf();
+  if (c.isStaff) return {state:"対象外"};
+  const senior = isSeniorGrade(c) && !cf.seniorSame;
+  const hired = hiredOf(c);
+
+  let hit = false, nth = null;
+  if (senior){
+    hit = cf.seniorMonths.indexOf(mo) >= 0;
+  } else if (cf.base === "fixed"){
+    hit = cf.months.indexOf(mo) >= 0;
+  } else {
+    if (!hired) return {state:"不明"};
+    const d = monthsFrom(hired, y, mo);
+    hit = d > 0 && d % cf.span === 0;
+    nth = hit ? d / cf.span : null;
+  }
+  if (!hit) return {state:"—"};
+  return {state:"評価月", nth: nth, first: nth === 1};
+}
+function evalStateOnISO(c, iso){
+  const p = iso.split("-");
+  return evalStateOn(c, Number(p[0]), Number(p[1]));
+}
+/* 期間のうち、評価月として見る月。
+   終了日の月は必ず見る。加えて、まるごと期間に入っている月も見る。
+   ミーティングが月の中旬にあり期間が 8/16〜9/15 のような切り方でも、
+   9月だけが対象になり二重に出ない。1か月飛ばして 7/16〜9/15 と出したときは、
+   まるごと入っている8月も拾うので、評価月の人を取りこぼさない。 */
+function monthLastDay(y, m){ return new Date(y, m, 0).getDate(); }
+function evalMonthsInPeriod(from, to){
+  const out = [];
+  const f = from.split("-").map(Number), t = to.split("-").map(Number);
+  let y = f[0], m = f[1];
+  for (let i = 0; i < 60; i++){
+    const first = y + "-" + pad2(m) + "-01";
+    const last = y + "-" + pad2(m) + "-" + pad2(monthLastDay(y, m));
+    const isLast = (y === t[0] && m === t[1]);
+    if (isLast || (first >= from && last <= to)) out.push(y + "-" + pad2(m));
+    if (isLast) break;
+    m++; if (m > 12){ m = 1; y++; }
+  }
+  return out;
+}
+/* 期間のどこかで評価月に当たるか。当たった月も返す。 */
+function evalStateInPeriod(c, from, to){
+  let unknown = false;
+  for (const ym of evalMonthsInPeriod(from, to)){
+    const p = ym.split("-");
+    const st = evalStateOn(c, Number(p[0]), Number(p[1]));
+    if (st.state === "評価月") return Object.assign({month: Number(p[1])}, st);
+    if (st.state === "不明") unknown = true;
+  }
+  return {state: unknown ? "不明" : "—"};
+}
+
+/* 次に評価月が来る年月。見つからなければ null。 */
+function nextEvalMonth(c, iso){
+  const p = iso.split("-");
+  let y = Number(p[0]), mo = Number(p[1]);
+  for (let i = 0; i < 48; i++){
+    if (evalStateOn(c, y, mo).state === "評価月") return y + "-" + pad2(mo);
+    mo++; if (mo > 12){ mo = 1; y++; }
+  }
+  return null;
+}
+/* いまの決め方を1行で。紙にも刷って、他店と見比べられるようにする。 */
+function evalRuleText(){
+  const cf = evalConf();
+  const low = cf.base === "hired"
+    ? "入社月から数えて年" + evalPerYear() + "回"
+    : monthsLabel(cf.months);
+  const sen = cf.seniorSame ? "同じ" : monthsLabel(cf.seniorMonths);
+  return "評価月: LD以下 " + low + " / AS1以上 " + sen;
+}
+
+/* ---- 紙面を組む ---- */
+/* 1人分。承認した章(期間内)と、部ごとポイント(終了日時点)を並べる。 */
+function personBlock(m, to, tag){
+  const c = m.c, bp = buPointsAsOf(c.code, to), hired = hiredOf(c);
+  let h = '<div class="person"><div class="who"><b>' + esc(c.name || "(氏名なし)")
+        + (c.isOwnStore === false ? "(ヘルプ)" : "") + "</b>"
+        + (tag ? '<span class="tag">' + esc(tag) + "</span>" : "")
+        + '<span>' + esc(c.code) + " ・ " + esc(c.position || c.grade || "格付未設定")
+        + " ・ 入社 " + (hired ? scoreDate(hired) : "未登録") + "</span>"
+        + '<span class="gain">' + (m.gained ? "+" + m.gained + "pt → " : "")
+        + "合計 " + m.total + "pt</span></div>";
+
+  if (m.inP.length){
+    h += "<table><tr><th>部</th><th>章</th><th>区分</th><th class=\"num\">pt</th>"
+       + "<th>承認日</th><th>転記</th></tr>";
+    for (const a of m.inP){
+      h += "<tr><td>" + esc(a.bu.code + " " + a.bu.name) + "</td>"
+         + "<td>" + esc(a.ch.code + " " + a.ch.name) + "</td>"
+         + "<td>" + (a.lv === "basic" ? "Basic" : "Advance") + "</td>"
+         + '<td class="num">' + a.pt + "</td>"
+         + '<td class="date">' + scoreDate(a.d) + "</td><td></td></tr>";
+    }
+    h += "</table>";
+  } else {
+    h += '<div class="quiet">この期間に承認した章はありません。'
+       + "スコアカードに書き足すものはありません。</div>";
+  }
+
+  /* パーソナルレコード用: 部ごとの積み上げと合計(終了日時点) */
+  let r1 = '<tr><th>部</th>', r2 = "<tr><th>pt</th>";
+  for (const bu of MASTER.bu){
+    r1 += "<th>" + esc(bu.code) + "</th>";
+    r2 += "<td>" + bp.get(bu.code) + "</td>";
+  }
+  r1 += '<th class="tot">合計</th></tr>';
+  r2 += '<td class="tot">' + m.total + "</td></tr>";
+  return h + '<table class="pr">' + r1 + r2 + "</table></div>";
+}
+
+function reportHTML(from, to){
+  const crews = allCrew().filter(c => c.active !== false);
+  const recs = crews.map(c => {
+    const inP = approvalsOf(c.code, from, to);
+    return {c, inP, gained: ptSum(inP), total: ptSum(approvalsOf(c.code, null, to)),
+            ev: evalStateInPeriod(c, from, to)};
+  });
+  const byGain = (a, b) => b.gained - a.gained || b.total - a.total;
+  const evalNow = recs.filter(r => r.ev.state === "評価月").sort(byGain);
+  const moved   = recs.filter(r => r.ev.state !== "評価月" && r.inP.length).sort(byGain);
+  const still   = recs.filter(r => r.ev.state !== "評価月" && !r.inP.length)
+                      .sort((a, b) => b.total - a.total);
+  const unknown = recs.filter(r => r.ev.state === "不明");
+  const emonths = evalMonthsInPeriod(from, to);
+  const monthLabel = emonths.map(ym => Number(ym.split("-")[1]) + "月").join("・");
+
+  let h = '<div class="paper">';
+  h += '<h2>' + esc(STORE.code + " " + STORE.name) + ' SALUTE 承認一覧</h2>';
+  h += '<div class="meta">期間 ' + scoreDate(from) + " 〜 " + scoreDate(to)
+     + "  /  出力 " + scoreDate(today())
+     + "  /  この期間に承認した章 " + recs.reduce((s, m) => s + m.inP.length, 0) + "件"
+     + "  /  " + monthLabel + "が評価月 " + evalNow.length + "名</div>";
+  h += '<div class="meta">' + esc(evalRuleText()) + "</div>";
+  h += '<div class="hint">承認日はスコアカードにそのまま書き写せる形(年/月/日)です。'
+     + "書き写したら右端の欄にチェックを入れてください。</div>";
+  if (unknown.length){
+    h += '<div class="hint">入社年月日が未登録のため評価月を判定できない人がいます: '
+       + esc(unknown.map(r => r.c.name).join("、"))
+       + "(クルーの画面から入れられます)</div>";
+  }
+
+  if (evalNow.length){
+    h += '<div class="grp">' + monthLabel + "が評価月のクルー"
+       + '<span>パーソナルレコードに部ごとポイントを書き写す</span></div>';
+    for (const m of evalNow){
+      const tag = emonths.length > 1
+        ? m.ev.month + "月" + (m.ev.first ? "・初回評価" : "評価")
+        : (m.ev.first ? "初回評価" : "評価月");
+      h += personBlock(m, to, tag);
+    }
+  }
+  if (moved.length){
+    h += '<div class="grp">この期間に伸びたクルー<span>'
+       + moved.length + "名</span></div>";
+    for (const m of moved) h += personBlock(m, to, null);
+  }
+
+  if (still.length){
+    h += '<div class="grp">この期間に動きのなかった人<span>'
+       + still.length + "名</span></div>";
+    h += '<div class="quiet">転記するものはありません。ミーティングで見るための一覧です。</div>';
+    h += "<table><tr><th>氏名</th><th>格付</th><th class=\"num\">合計pt</th>"
+       + "<th>最終の記録</th><th>次の評価月</th></tr>";
+    for (const s of still){
+      const last = lastTrainedOn(s.c.code);
+      const nx = nextEvalMonth(s.c, to);
+      h += "<tr><td>" + esc(s.c.name || "(氏名なし)")
+         + (s.c.isOwnStore === false ? "(ヘルプ)" : "") + "</td>"
+         + "<td>" + esc(s.c.position || s.c.grade || "") + "</td>"
+         + '<td class="num">' + s.total + "</td>"
+         + "<td>" + (last ? scoreDate(last) + "(" + daysSince(last) + "日前)" : "記録なし")
+         + "</td>"
+         + "<td>" + (s.c.isStaff ? "対象外"
+                    : nx ? Number(nx.split("-")[1]) + "月" : "不明") + "</td></tr>";
+    }
+    h += "</table>";
+  }
+  if (!evalNow.length && !moved.length){
+    h += '<div class="person"><div class="quiet">'
+       + "この期間にマネージャー承認した章はなく、評価月のクルーもいません。"
+       + "期間を広げてみてください。</div></div>";
+  }
+  return h + "</div>";
+}
+
+function showReport(from, to){
+  const p = document.getElementById("printout");
+  p.innerHTML = "";
+  const bar = el("div","pbar");
+  const go = el("button", null, "印刷 / PDFで保存");
+  go.onclick = () => { lastExportEnd(to); window.print(); };
+  const cl = el("button","ghost","閉じる");
+  cl.onclick = () => {
+    document.body.classList.remove("preview");
+    p.setAttribute("aria-hidden", "true");
+    p.innerHTML = "";
+  };
+  bar.appendChild(go); bar.appendChild(cl);
+  p.appendChild(bar);
+  p.appendChild(el("div","pnote",
+    "印刷が始まらないときは、ホーム画面のアイコンではなくSafariでこのページを開き、"
+    + "共有メニューからプリントしてください。"));
+  const body = document.createElement("div");
+  body.innerHTML = reportHTML(from, to);
+  p.appendChild(body.firstChild);
+  document.body.classList.add("preview");
+  p.setAttribute("aria-hidden", "false");
+  p.scrollTop = 0;
+}
+
+/* ---- Excel(SALSA取り込み用) ---- */
+/* 外部ライブラリを入れずに .xlsx を作る。圧縮せずに格納するだけのzipで、
+   文字列はすべて inlineStr で書く(sharedStringsを持たなくて済む)。 */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++){
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+/* 圧縮できる端末なら縮める。使えなければ無圧縮で入れる(どちらもzipとして正しい)。
+   節別状況が数千行になるため、圧縮できるかどうかでファイルサイズが10倍違う。 */
+async function deflateRaw(bytes){
+  if (typeof CompressionStream !== "function") return null;
+  try {
+    const s = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  } catch (e){ return null; }
+}
+async function zipBlob(files){
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  for (const f of files){
+    const name = enc.encode(f.name), raw = enc.encode(f.data), crc = crc32(raw);
+    const packed = await deflateRaw(raw);
+    const data = packed || raw, method = packed ? 8 : 0;
+    const lh = new Uint8Array(30 + name.length), lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true);
+    lv.setUint16(8, method, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true); lv.setUint32(22, raw.length, true);
+    lv.setUint16(26, name.length, true);
+    lh.set(name, 30);
+    parts.push(lh, data);
+
+    const ch = new Uint8Array(46 + name.length), cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(10, method, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true); cv.setUint32(24, raw.length, true);
+    cv.setUint16(28, name.length, true);
+    cv.setUint32(42, offset, true);
+    ch.set(name, 46);
+    central.push(ch);
+    offset += lh.length + data.length;
+  }
+  const cdSize = central.reduce((s, c) => s + c.length, 0);
+  const end = new Uint8Array(22), ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, central.length, true); ev.setUint16(10, central.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+  return new Blob(parts.concat(central, [end]),
+                  {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+function colRef(n){
+  let s = "", i = n + 1;
+  while (i > 0){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - m - 1) / 26; }
+  return s;
+}
+function sheetXML(rows){
+  let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        + '<sheetData>';
+  rows.forEach((row, r) => {
+    x += '<row r="' + (r + 1) + '">';
+    row.forEach((v, c) => {
+      if (v === null || v === undefined || v === "") return;
+      const ref = colRef(c) + (r + 1);
+      if (typeof v === "number") x += '<c r="' + ref + '"><v>' + v + "</v></c>";
+      else x += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">'
+              + esc(v) + "</t></is></c>";
+    });
+    x += "</row>";
+  });
+  return x + "</sheetData></worksheet>";
+}
+async function workbookBlob(sheets){
+  const ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+  const rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+  const files = [
+    {name:"[Content_Types].xml", data:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+      + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+      + '<Default Extension="xml" ContentType="application/xml"/>'
+      + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+      + sheets.map((s, i) => '<Override PartName="/xl/worksheets/sheet' + (i+1)
+          + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("")
+      + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+      + "</Types>"},
+    {name:"_rels/.rels", data:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + '<Relationship Id="rId1" Type="' + rel + '/officeDocument" Target="xl/workbook.xml"/>'
+      + "</Relationships>"},
+    {name:"xl/workbook.xml", data:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<workbook xmlns="' + ns + '" xmlns:r="' + rel + '"><sheets>'
+      + sheets.map((s, i) => '<sheet name="' + esc(s.name) + '" sheetId="' + (i+1)
+          + '" r:id="rId' + (i+1) + '"/>').join("")
+      + "</sheets></workbook>"},
+    {name:"xl/_rels/workbook.xml.rels", data:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      + sheets.map((s, i) => '<Relationship Id="rId' + (i+1) + '" Type="' + rel
+          + '/worksheet" Target="worksheets/sheet' + (i+1) + '.xml"/>').join("")
+      + '<Relationship Id="rIdS" Type="' + rel + '/styles" Target="styles.xml"/>'
+      + "</Relationships>"},
+    {name:"xl/styles.xml", data:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<styleSheet xmlns="' + ns + '">'
+      + '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
+      + '<fills count="2"><fill><patternFill patternType="none"/></fill>'
+      + '<fill><patternFill patternType="gray125"/></fill></fills>'
+      + '<borders count="1"><border/></borders>'
+      + '<cellStyleXfs count="1"><xf/></cellStyleXfs>'
+      + '<cellXfs count="1"><xf xfId="0"/></cellXfs></styleSheet>'},
+  ];
+  sheets.forEach((s, i) => files.push(
+    {name:"xl/worksheets/sheet" + (i+1) + ".xml", data: sheetXML(s.rows)}));
+  return await zipBlob(files);
+}
+
+/* 章ごとのポイント(終了日時点)。SALSAの個人別実績はこの形で持っている。 */
+function chapterPtAsOf(code, ch, to){
+  let pt = 0;
+  const b = chApproval(code, ch.code, "basic");
+  if (b && b.d && b.d <= to) pt += ch.basicMaxPt || 0;
+  if (ch.hasAdvance){
+    const a = chApproval(code, ch.code, "advance");
+    if (a && a.d && a.d <= to) pt += ch.advanceMaxPt || 0;
+  }
+  return pt;
+}
+/* 職位(C列)の書き方をSALSAに合わせる。SALSA側は ﾘｰﾃﾞｨﾝｸﾞ3 ｱｿｼｴｲﾄ2 のような
+   半角カナで持っているため、格付コードのまま貼ると表記が混ざる。
+   呼び名が違っていたら、この表の言葉だけ直せばよい。 */
+const GRADE_LABEL = {T:"T", LD:"ﾘｰﾃﾞｨﾝｸﾞ", AS:"ｱｿｼｴｲﾄ", PT:"ﾊﾟｰﾄﾅｰ"};
+function posLabel(c){
+  if (c.position) return c.position;          // 社員はSALSAの役職をそのまま
+  const g = (c.grade || "").toUpperCase();
+  const m = g.match(/^(LD|AS|PT|T)(\d*)$/);
+  if (!m) return c.grade || "";
+  return (GRADE_LABEL[m[1]] || m[1]) + m[2];
+}
+
+/* ① 横持ち。個人別実績シートの見出しと同じ並びで、そのまま貼り付けられる。 */
+function wideRows(list, to){
+  const rows = [["従業員コード","氏名","職位"].concat(CHAPTERS.map(ch => ch.code))];
+  for (const c of list){
+    const r = [c.code, c.name || "", posLabel(c)];
+    for (const ch of CHAPTERS) r.push(chapterPtAsOf(c.code, ch, to));
+    rows.push(r);
+  }
+  return rows;
+}
+/* ② 章別の状況。全クルー×68章を、承認していない章も含めて1行ずつ出す。
+   SALSAの SUB項目_タスクコード対応表 が章コードを鍵にしているので、
+   タスク記号の時間帯ログと突き合わせるときはこのシートが受け口になる。 */
+function chapterRows(list, to){
+  const rows = [["従業員コード","氏名","区分","部コード","章コード","章名","状態",
+                 "Advance有無","Basic承認日","Advance承認日","取得pt","合計満点"]];
+  for (const c of list){
+    for (const bu of MASTER.bu){
+      for (const ch of bu.chapters){
+        const b = chApproval(c.code, ch.code, "basic");
+        const a = ch.hasAdvance ? chApproval(c.code, ch.code, "advance") : null;
+        const bd = (b && b.d && b.d <= to) ? b.d : "";
+        const ad = (a && a.d && a.d <= to) ? a.d : "";
+        rows.push([c.code, c.name || "", c.isOwnStore === false ? "ヘルプ" : "自店",
+                   bu.code, ch.code, ch.name,
+                   ad ? "A済" : bd ? "B済" : "未",
+                   ch.hasAdvance ? "有" : "無", bd, ad,
+                   chapterPtAsOf(c.code, ch, to),
+                   (ch.basicMaxPt || 0) + (ch.hasAdvance ? (ch.advanceMaxPt || 0) : 0)]);
+      }
+    }
+  }
+  return rows;
+}
+
+/* ③ 縦持ち。章の承認を1行ずつ。取り込みスクリプトで扱いやすい形。 */
+function flatRows(list, to){
+  const rows = [["従業員コード","氏名","区分","部コード","部名","章コード","章名",
+                 "水準","ポイント","承認日","承認者コード"]];
+  for (const c of list){
+    for (const a of approvalsOf(c.code, null, to)){
+      rows.push([c.code, c.name || "", c.isOwnStore === false ? "ヘルプ" : "自店",
+                 a.bu.code, a.bu.name, a.ch.code, a.ch.name,
+                 a.lv === "basic" ? "Basic" : "Advance", a.pt, a.d, a.by || ""]);
+    }
+  }
+  return rows;
+}
+/* ④ 節単位(㊼④の仕様)。清掃項目のTR判定に使う。 */
+function sectionRows(list, to){
+  const rows = [["従業員コード","氏名","章コード","節コード","節名","状態","確定日"]];
+  for (const c of list){
+    for (const ch of CHAPTERS){
+      const b = chApproval(c.code, ch.code, "basic");
+      const a = ch.hasAdvance ? chApproval(c.code, ch.code, "advance") : null;
+      const bOk = !!(b && b.d && b.d <= to), aOk = !!(a && a.d && a.d <= to);
+      for (const sec of ch.sections){
+        const codes = sec.viewpoints.map(v => v.code);
+        const allAt = lv => codes.every(v => stageOf(c.code, v, lv) >= STAGE_MAX);
+        let st = "未", d = "";
+        if (aOk && allAt("advance")){ st = "A済"; d = a.d; }
+        else if (bOk && allAt("basic")){ st = "B済"; d = b.d; }
+        rows.push([c.code, c.name || "", ch.code,
+                   codes.length ? codes[0].slice(0, 8) : ch.code,
+                   sec.name || "", st, d]);
+      }
+    }
+  }
+  return rows;
+}
+
+/* ⑤ 名簿。入社年月日と評価月を持ち帰るためのもの。
+   0-1準社員マスタに入社年月日の列を作るときは、このシートをそのまま使える。 */
+function rosterRows(list, to){
+  const rows = [["従業員コード","氏名","格付","職位","区分","入社年月日",
+                 "入社年月日の出どころ","評価月判定","次の評価月","合計pt"]];
+  for (const c of list){
+    const csv = c.hiredOn || c.hiredAt || c.joinedOn || "";
+    const manual = c.hiredManual || "";
+    const ev = evalStateOnISO(c, to);
+    const nx = nextEvalMonth(c, to);
+    rows.push([c.code, c.name || "", c.grade || "", c.position || "",
+               c.isOwnStore === false ? "ヘルプ" : "自店",
+               csv || manual,
+               csv ? "CSV" : (manual ? "SALUTEで入力" : ""),
+               ev.state, nx || "", ptSum(approvalsOf(c.code, null, to))]);
+  }
+  return rows;
+}
+
+async function deliver(blob, filename){
+  try {
+    const file = new File([blob], filename, {type: blob.type});
+    if (navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: filename});
+      return "共有しました";
+    }
+  } catch (e){
+    if (e && e.name === "AbortError") return "やめました";
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  return "保存しました";
+}
+
+function exportWorkbook(to){
+  const crews = allCrew().filter(c => c.active !== false);
+  const own = crews.filter(c => c.isOwnStore !== false);
+  const help = crews.filter(c => c.isOwnStore === false);
+  const sheets = [
+    {name:"個人別実績", rows: wideRows(own, to)},
+    {name:"個人別実績_ヘルプ", rows: wideRows(help, to)},
+    {name:"章別状況", rows: chapterRows(crews, to)},
+    {name:"承認明細", rows: flatRows(crews, to)},
+    {name:"節別状況", rows: sectionRows(crews, to)},
+    {name:"名簿", rows: rosterRows(crews, to)},
+  ];
+  const file = "SALUTE_" + STORE.code + "_" + to.replace(/-/g, "") + ".xlsx";
+  workbookBlob(sheets).then(blob => deliver(blob, file)).then(msg => {
+    openSheet({
+      title: "Excelを書き出しました",
+      note: file + "\n" + msg + "。\n"
+          + "自店 " + own.length + "名 / ヘルプ " + help.length + "名。"
+          + "章別状況 " + (sheets[2].rows.length - 1) + "行。\n"
+          + to + " 時点の全部が入っています(期間では絞っていません)。",
+      okLabel: "閉じる", onOk: () => {},
+    });
+  });
+}
+
+/* ================= SALSAの判定材料の取り込み =================
+   SALSAは「繁忙時間帯にこの記号をこなしていた」という事実を出すだけで、
+   承認はしない。店長がSALUTEの画面で見て、自分で承認する。
+   章コードを鍵にする(SALSAの SUB項目_タスクコード対応表 と同じ粒度)。 */
+function salsaHints(){
+  const r = Store.crewPatch("__salsa");
+  return (r && r.data) ? r.data : {};
+}
+function salsaImportedAt(){
+  const r = Store.crewPatch("__salsa");
+  return (r && r.at) ? r.at : null;
+}
+function hintOf(code, chCode){
+  const h = salsaHints()[code];
+  return h ? h[chCode] : null;
+}
+/* 画面に出す1行。SALSAが出せた項目だけを並べる。 */
+function hintText(h){
+  const parts = [];
+  parts.push("繁忙時の実績" + (h.n ? " " + h.n + "回" : "あり"));
+  if (h.mark) parts.push("記号" + h.mark);
+  if (h.last) parts.push("直近 " + scoreDate(h.last) + (h.hour ? " " + h.hour + "時台" : ""));
+  if (h.prod) parts.push(Number(h.prod).toLocaleString() + "円/人時");
+  return parts.join(" ・ ");
+}
+
+/* 見出しの言葉は揺れやすいので、いくつかの書き方を受ける。 */
+const HINT_KEYS = {
+  code: ["従業員コード","コード","社員コード","code"],
+  ch:   ["章コード","章","chapter","ch"],
+  n:    ["回数","件数","回","n"],
+  last: ["最終日","直近日","日付","date"],
+  hour: ["時間帯","時","hour"],
+  prod: ["人時売上高","実績人時売上高","生産性","productivity"],
+  mark: ["記号","タスク記号","タスク","mark"],
+};
+function parseCsv(text){
+  const rows = [];
+  let row = [], cell = "", q = false;
+  const t = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+  for (let i = 0; i < t.length; i++){
+    const c = t[i];
+    if (q){
+      if (c === '"' && t[i+1] === '"'){ cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ","){ row.push(cell); cell = ""; }
+    else if (c === "\n"){ row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell !== "" || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(v => String(v).trim() !== ""));
+}
+function applySalsaCsv(text){
+  const rows = parseCsv(text);
+  if (rows.length < 2) return {err:"中身が読めませんでした"};
+  const head = rows[0].map(h => h.trim());
+  const idx = {};
+  for (const key of Object.keys(HINT_KEYS))
+    idx[key] = head.findIndex(h => HINT_KEYS[key].indexOf(h) >= 0);
+  if (idx.code < 0 || idx.ch < 0)
+    return {err:"従業員コードと章コードの列が見つかりません"};
+
+  const known = new Set(CHAPTERS.map(ch => ch.code));
+  const roster = new Set(allCrew().map(c => c.code));
+  const data = {};
+  let n = 0, badCh = 0, badCode = 0;
+  for (const r of rows.slice(1)){
+    const code = (r[idx.code] || "").trim();
+    const ch = (r[idx.ch] || "").trim();
+    if (!code || !ch) continue;
+    if (!known.has(ch)){ badCh++; continue; }
+    if (!roster.has(code)){ badCode++; continue; }
+    const get = k => idx[k] >= 0 ? String(r[idx[k]] || "").trim() : "";
+    data[code] = data[code] || {};
+    data[code][ch] = {n: Number(get("n")) || 0, last: get("last"), hour: get("hour"),
+                      prod: Number(String(get("prod")).replace(/[^0-9.]/g, "")) || 0,
+                      mark: get("mark")};
+    n++;
+  }
+  Store.crewPatch("__salsa", {data: data, at: today()});
+  return {n: n, people: Object.keys(data).length, badCh: badCh, badCode: badCode};
+}
+function askImportSalsa(){
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = ".csv,text/csv,text/plain";
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      const res = applySalsaCsv(String(rd.result || ""));
+      openSheet({
+        title: res.err ? "取り込めませんでした" : "取り込みました",
+        note: res.err
+          ? res.err + "\n見出しに 従業員コード と 章コード が要ります。"
+          : res.n + "件 / " + res.people + "名ぶんを取り込みました。"
+            + (res.badCh ? "\n知らない章コード " + res.badCh + "件は飛ばしました。" : "")
+            + (res.badCode ? "\n名簿にない人 " + res.badCode + "件は飛ばしました。" : "")
+            + "\n章の画面と承認のときに出ます。承認するかどうかは店長が決めてください。",
+        okLabel: "閉じる", onOk: () => {},
+      });
+    };
+    rd.readAsText(f);
+  };
+  inp.click();
+}
+
+/* エクスポートの入口。期間は前回の続きから始める。 */
+function askExport(){
+  const last = lastExportEnd();
+  const to = today();
+  const from = last ? shiftDays(last, 1) : shiftMonths(to, -1);
+  openSheet({
+    title: "エクスポート",
+    note: last ? "前回は " + scoreDate(last) + " まで出しました。"
+               : "初回です。既定では直近1か月を出します。",
+    okLabel: "作る",
+    fields: [
+      {key:"from", label:"開始日", type:"date", value: from},
+      {key:"to",   label:"終了日", type:"date", value: to,
+       note:"ミーティングの区切りに合わせて変えてください"},
+      {key:"kind", label:"やること",
+       options:["印刷(スコアカード転記用)","Excel(SALSA取り込み用)",
+                "取り込み(SALSAの判定材料)"],
+       note: salsaImportedAt()
+         ? "判定材料は " + scoreDate(salsaImportedAt()) + " に取り込み済み"
+         : "判定材料はまだ取り込んでいません"},
+    ],
+    onOk: (v) => {
+      if (v.kind.indexOf("取り込み") === 0){ setTimeout(askImportSalsa, 60); return; }
+      if (!v.from || !v.to) return "期間を入れてください";
+      if (v.from > v.to) return "開始日が終了日より後になっています";
+      if (v.kind.indexOf("印刷") === 0) setTimeout(() => showReport(v.from, v.to), 60);
+      else setTimeout(() => exportWorkbook(v.to), 60);
+    },
+  });
+}
+
+/* ---- 評価月の設定 ---- */
+function renderSettings(){
+  const cf = evalConf();
+  const now = today(), month = Number(now.split("-")[1]);
+  setHeader(STORE.code + " " + STORE.name, "評価月の決め方", "", true);
+  $main.innerHTML = "";
+
+  const rows = [
+    {t:"LD以下(TRY・LD1〜3をまとめて)",
+     v: cf.base === "hired" ? "入社月から数えて年" + evalPerYear() + "回"
+                            : monthsLabel(cf.months),
+     go: askEvalLow},
+    {t:"AS1以上(AS・PT)",
+     v: monthsLabel(cf.seniorMonths) + " ・ 入社月に関係なく決まっています",
+     go: null},
+  ];
+  $main.appendChild(el("div","sec","決め方"));
+  for (const r of rows){
+    /* AS1以上は会社の決まりで、入社月に関係なく決まった月。店舗で変えるものでは
+       ないので押せる行にしない(変えるときは EVAL_DEFAULT.seniorMonths を直す)。 */
+    const row = el(r.go ? "button" : "div", "row");
+    const body = el("div","body");
+    body.appendChild(el("div","name", r.t));
+    body.appendChild(el("div","sub", r.v));
+    row.appendChild(body);
+    if (r.go){ row.appendChild(chevron()); row.onclick = r.go; }
+    $main.appendChild(row);
+  }
+
+  /* いまの決め方で誰が当たるのかを、その場で確かめられるようにする */
+  const hit = allCrew().filter(c => c.active !== false
+              && evalStateOn(c, Number(now.split("-")[0]), month).state === "評価月");
+  $main.appendChild(el("div","sec", "この決め方だと " + month + "月は"));
+  const box = el("div","empty");
+  box.appendChild(el("b", null, hit.length ? hit.length + "名が評価月" : "評価月の人はいません"));
+  if (hit.length) box.append(hit.map(c => c.name).join("、"));
+  $main.appendChild(box);
+
+  /* 入社年月日はここでまとめて入れる。クルーの画面には置かない
+     (本人が見る画面なので、店長の作業を混ぜない)。 */
+  const people = allCrew().filter(c => c.active !== false && !c.isStaff);
+  const missing = people.filter(c => !hiredOf(c)).length;
+  $main.appendChild(el("div","sec",
+    "入社年月日" + (missing ? "(未登録 " + missing + "名)" : "")));
+  for (const c of people){
+    const h = hiredOf(c);
+    const fromCsv = !!(c.hiredOn || c.hiredAt || c.joinedOn);
+    const nx = nextEvalMonth(c, now);
+    const row = el("button","row");
+    const body = el("div","body");
+    body.appendChild(el("div","name", c.name || c.code));
+    const sub = el("div","sub");
+    if (h){
+      sub.append(scoreDate(h) + (fromCsv ? "(名簿)" : "(手入力)") + " ・ 次の評価月 "
+                 + (nx ? Number(nx.split("-")[1]) + "月" : "不明"));
+    } else {
+      sub.appendChild(el("span","stale","未登録"));
+      sub.append(isSeniorGrade(c)
+        ? " ・ AS1以上なので判定には使いません"
+        : evalConf().base === "fixed"
+          ? " ・ 決まった月なので判定はできます"
+          : " ・ 入社月から数えるため判定できません");
+    }
+    body.appendChild(sub);
+    row.appendChild(body);
+    row.appendChild(chevron());
+    row.onclick = () => askHired(c, fromCsv);
+    $main.appendChild(row);
+  }
+
+  const rst = el("button","switch danger","既定に戻す");
+  rst.onclick = () => openSheet({
+    title:"既定に戻す", danger:true, okLabel:"戻す",
+    note:"LD以下=入社月から数えて年4回 / AS1以上=3月・9月 に戻します。",
+    onOk: () => { evalConf(Object.assign({}, EVAL_DEFAULT)); },
+  });
+  $main.appendChild(rst);
+
+}
+
+function askEvalLow(){
+  const cf = evalConf();
+  openSheet({
+    title: "LD以下の評価月",
+    note: "TRY・LD1〜3の話です(AS1以上は " + monthsLabel(cf.seniorMonths)
+        + " で固定)。クルーは" + evalGroups() + "組に分かれ、1人あたり年"
+        + evalPerYear() + "回です。",
+    okLabel: "保存する",
+    fields: [
+      {key:"base", label:"数え方",
+       options:["入社月から数える","決まった月にする"],
+       value: cf.base === "hired" ? "入社月から数える" : "決まった月にする"},
+      Object.assign({key:"months",
+                     label:"評価月(" + evalGroups() + "組のどれか)",
+                     note:"どれも年" + evalPerYear() + "回です"},
+                    monthChoices(cf.span, cf.months)),
+    ],
+    onOk: (v) => {
+      const fixed = v.base.indexOf("決まった") === 0;
+      evalConf({base: fixed ? "fixed" : "hired", months: parseMonths(v.months)});
+    },
+  });
+}
+/* ---- 遷移 ---- */
+function back(){
+  if (view.name === "viewpoints") view = {name:"chapter", crew:view.crew, bu:view.bu};
+  else if (view.name === "todo") view = {name:"home", crew:view.crew};
+  else if (view.name === "chapter") view = {name:"home", crew:view.crew};
+  else if (view.name === "settings") view = {name:"crew"};
+  else if (view.name === "crew"){
+    const last = Store.lastCrew();
+    const c = last ? findCrew(last) : null;
+    view = c ? {name:"home", crew:c} : {name:"crew"};
+  }
+  render();
+}
+document.getElementById("back").onclick = back;
+
+function render(){
+  const y = $main.scrollTop;
+  if (view.name === "crew") renderCrew();
+  else if (view.name === "home") renderHome();
+  else if (view.name === "todo") renderTodo();
+  else if (view.name === "chapter") renderChapter();
+  else if (view.name === "settings") renderSettings();
+  else renderViewpoints();
+  $main.scrollTop = y;
+}
+render();
+
+/* オフラインで起動できるようにする。
+   file:// で開いたときやServiceWorkerが使えない環境では、黙って何もしない。 */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
