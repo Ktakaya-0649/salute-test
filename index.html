@@ -418,13 +418,21 @@
     .person .who > * + *{margin-left:6px}
     .person .who .gain{display:block;margin-left:0;margin-top:2px;text-align:right}
   }
-  .paper table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12.5px}
+  /* iPhoneの印刷は「画面の横幅で組んだものを紙に拡大」する。列が多い表が
+     画面幅からはみ出すと、はみ出したぶんは印刷で切り落とされる。
+     そこで列幅を固定して、どんな幅でも必ず収まるようにする。 */
+  .paper table{width:100%;table-layout:fixed;border-collapse:collapse;
+               margin-top:8px;font-size:12.5px}
+  .paper table td,.paper table th{word-break:break-word;overflow-wrap:anywhere}
+  .paper thead{display:table-header-group}   /* ページをまたいだら見出しを繰り返す */
+  .paper tr{break-inside:avoid;page-break-inside:avoid}
   .paper th,.paper td{border:1px solid #999;padding:4px 6px;text-align:left;
                       vertical-align:top}
   .paper th{background:#EEE;font-weight:600;font-size:11.5px}
   .paper td.num,.paper th.num{text-align:right;font-variant-numeric:tabular-nums}
   .paper td.date{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
-  .paper .pr td,.paper .pr th{text-align:center;padding:3px 2px;font-size:11.5px}
+  .paper .pr td,.paper .pr th{text-align:center;padding:3px 1px;font-size:11px;
+                              word-break:keep-all}
   .paper .pr .tot{font-weight:700;background:#F3F3F3}
   /* SALSAからの判定材料。承認そのものではないので、緑にはしない。 */
   .row .body .busy{margin-top:3px;font-size:12px;color:#8A6D00;font-weight:600}
@@ -1973,8 +1981,11 @@ function personBlock(m, to, tag){
         + "合計 " + m.total + "pt</span></div>";
 
   if (m.inP.length){
-    h += "<table><tr><th>部</th><th>章</th><th>区分</th><th class=\"num\">pt</th>"
-       + "<th>承認日</th><th>転記</th></tr>";
+    h += "<table>"
+       + '<col style="width:20%"><col style="width:35%"><col style="width:16%">'
+       + '<col style="width:7%"><col style="width:14%"><col style="width:8%">'
+       + "<thead><tr><th>部</th><th>章</th><th>区分</th><th class=\"num\">pt</th>"
+       + "<th>承認日</th><th>転記</th></tr></thead><tbody>";
     for (const a of m.inP){
       h += "<tr><td>" + esc(a.bu.code + " " + a.bu.name) + "</td>"
          + "<td>" + esc(a.ch.code + " " + a.ch.name) + "</td>"
@@ -1982,7 +1993,7 @@ function personBlock(m, to, tag){
          + '<td class="num">' + a.pt + "</td>"
          + '<td class="date">' + scoreDate(a.d) + "</td><td></td></tr>";
     }
-    h += "</table>";
+    h += "</tbody></table>";
   } else {
     h += '<div class="quiet">' + (m.total
       ? "この期間に承認した章はありません。スコアカードに書き足すものはありません。"
@@ -1994,7 +2005,11 @@ function personBlock(m, to, tag){
      1行で済ませる(入社まもない人が評価月に重なるとこうなる)。 */
   if (!m.total) return h + "</div>";
 
-  let r1 = '<tr><th>部</th>', r2 = "<tr><th>pt</th>";  /* 部ごとの積み上げ */
+  /* 12列あるので、ラベル列を狭くして残りを均等に割る */
+  let r1 = '<col style="width:9%">'
+         + MASTER.bu.map(() => '<col style="width:7.2%">').join("")
+         + '<col style="width:11%"><tr><th>部</th>';
+  let r2 = "<tr><th>pt</th>";
   for (const bu of MASTER.bu){
     r1 += "<th>" + esc(bu.code) + "</th>";
     r2 += "<td>" + bp.get(bu.code) + "</td>";
@@ -2055,8 +2070,11 @@ function reportHTML(from, to){
     h += '<div class="grp">この期間に動きのなかった人<span>'
        + still.length + "名</span></div>";
     h += '<div class="quiet">転記するものはありません。ミーティングで見るための一覧です。</div>';
-    h += "<table><tr><th>氏名</th><th>格付</th><th class=\"num\">合計pt</th>"
-       + "<th>最終の記録</th><th>次の評価月</th></tr>";
+    h += "<table>"
+       + '<col style="width:26%"><col style="width:17%"><col style="width:13%">'
+       + '<col style="width:28%"><col style="width:16%">'
+       + "<thead><tr><th>氏名</th><th>格付</th><th class=\"num\">合計pt</th>"
+       + "<th>最終の記録</th><th>次の評価月</th></tr></thead><tbody>";
     for (const s of still){
       const last = lastTrainedOn(s.c.code);
       const nx = nextEvalMonth(s.c, to);
@@ -2069,7 +2087,7 @@ function reportHTML(from, to){
          + "<td>" + (s.c.isStaff ? "対象外"
                     : nx ? Number(nx.split("-")[1]) + "月" : "不明") + "</td></tr>";
     }
-    h += "</table>";
+    h += "</tbody></table>";
   }
   if (!evalNow.length && !moved.length){
     h += '<div class="person"><div class="quiet">'

@@ -1,7 +1,7 @@
 /* SALUTE service worker
    ★ アプリを更新したら、必ず下の CACHE の数字を上げること。
       上げ忘れると、ホーム画面から開いたときに古い画面がキャッシュから返る。 */
-const CACHE = "salute-v3";
+const CACHE = "salute-v4";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
