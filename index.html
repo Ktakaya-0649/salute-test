@@ -240,6 +240,7 @@
   .badge.m{background:var(--green);color:#fff}
   /* トレーナー確認待ちは控えめに */
   .badge.t{background:var(--amber-soft);color:var(--amber);border:1px solid #E4C69B}
+  .row .sub .code{color:var(--ink-3);font-variant-numeric:tabular-nums;letter-spacing:.02em}
   .badge.e{background:var(--amber);color:#fff;border:1px solid var(--amber)}
 
   /* ---- ホームの承認待ち(件数だけ) ---- */
@@ -1070,7 +1071,9 @@ function renderCrewList(){
       body.appendChild(el("div","name", c.name));
 
       const sub = el("div","sub");
-      sub.append((c.grade || "格付未設定") + (c.isStaff ? "・社員" : ""));
+      /* 同姓の人もいるので、従業員コードを添える(探すときの手がかりにもなる) */
+      sub.appendChild(el("span","code", c.code));
+      sub.append("  " + (c.grade || "格付未設定") + (c.isStaff ? "・社員" : ""));
       const last = lastTrainedOn(c.code);
       if (last){
         const n = daysSince(last);
