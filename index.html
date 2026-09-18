@@ -1020,15 +1020,33 @@ function renderCrewList(){
             showRetired ? "退職したクルー" : "SALUTE",
             hits.length + "名", !first);
   document.getElementById("title").classList.toggle("brand", !showRetired);
+  /* setHeader はアイコンを消すので、ここで付け直す。
+     名簿が空のときこそ取り込みが要るため、一覧の中身に関係なく必ず出す。 */
+  if (!showRetired){
+    headerAction("エクスポート(印刷・Excel)", ICON_EXPORT, askExport);
+    headerAction("設定", ICON_GEAR, () => { view = {name:"settings"}; render(); });
+  }
   searchEl.querySelector(".clear").style.visibility = crewQuery ? "visible" : "hidden";
 
   listEl.innerHTML = "";
   if (!showRetired && !crewQuery) listEl.appendChild(pulseRow(pool));
   if (!hits.length){
     const e = el("div","empty");
-    e.appendChild(el("b", null, "見つかりません"));
-    e.append("氏名の漢字か、従業員コード・格付で探してみてください");
-    listEl.appendChild(e);
+    if (!pool.length && !crewQuery){
+      e.appendChild(el("b", null, "まだクルーがいません"));
+      e.append("右上の歯車から初期データを取り込むか、下から1人ずつ足してください");
+      listEl.appendChild(e);
+      const imp = el("button","switch","初期データ・バックアップを取り込む");
+      imp.onclick = askBackupIn;
+      listEl.appendChild(imp);
+      const add = el("button","switch","クルーを追加する");
+      add.onclick = askAddCrew;
+      listEl.appendChild(add);
+    } else {
+      e.appendChild(el("b", null, "見つかりません"));
+      e.append("氏名の漢字か、従業員コード・格付で探してみてください");
+      listEl.appendChild(e);
+    }
     return;
   }
 
@@ -1094,8 +1112,6 @@ function renderCrewList(){
   }
 
   if (!showRetired){
-    headerAction("エクスポート(印刷・Excel)", ICON_EXPORT, askExport);
-    headerAction("設定", ICON_GEAR, () => { view = {name:"settings"}; render(); });
     const add = el("button","switch","クルーを追加する");
     add.onclick = askAddCrew;
     listEl.appendChild(add);
