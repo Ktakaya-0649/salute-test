@@ -1050,9 +1050,17 @@ function renderCrewList(){
     return;
   }
 
-  /* ヘルプという区分は持たない。元店舗とデータを共有できないため、
-     この店で見る名簿は全員ひとつの枠で扱う(店長判断)。 */
-  const groups = [["クルー", hits]];
+  /* 並びは 格付の高い順 → 同じ格付なら従業員コード順。社員は末尾に。
+     ヘルプという区分は持たない(元店舗とデータを共有できないため)。 */
+  const gradeRank = (c) => {
+    const i = GRADES_LIST.indexOf(c.grade || "");
+    return i >= 0 ? i : -1;
+  };
+  const sorted = hits.slice().sort((a, b) =>
+    (a.isStaff ? 1 : 0) - (b.isStaff ? 1 : 0)
+    || gradeRank(b) - gradeRank(a)
+    || String(a.code).localeCompare(String(b.code)));
+  const groups = [["クルー", sorted]];
   for (const [label, list] of groups){
     if (!list.length) continue;
     listEl.appendChild(el("div","sec", label + "　" + list.length + "名"));
